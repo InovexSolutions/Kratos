@@ -1,3 +1,5 @@
+import type { Allocation } from "~/types/pterodactyl";
+
 export class PterodactylService {
     private config = useRuntimeConfig()
     private headers = {
@@ -13,11 +15,17 @@ export class PterodactylService {
     }
 
     async createServer(data: any) {
-        return $fetch(`${process.env.PTERODACTYL_URL}/api/application/servers`, {
+        console.log('Creating server:', data);
+        const getAllocations = await this.getAllocations(data.node);
+        if (getAllocations.length === 0) {
+            throw new Error('No allocations available on the selected node.');
+        }
+        const res = await $fetch(`${process.env.PTERODACTYL_URL}/api/application/servers`, {
             method: 'POST',
             headers: this.headers,
             body: {
                 name: data.name,
+                node: data.nodeId,
                 user: data.userId,
                 egg: data.eggId,
                 docker_image: data.dockerImage || 'quay.io/pterodactyl/core:java',
@@ -34,17 +42,33 @@ export class PterodactylService {
                     cpu: data.limits?.cpu || 100
                 },
                 feature_limits: {
-                    databases: data.feature_limits?.databases || 5,
-                    allocations: data.feature_limits?.allocations || 5,
+                    databases: data.feature_limits?.databases || 1,
+                    allocations: data.feature_limits?.allocations || 1,
                     backups: data.feature_limits?.backups || 1
                 },
                 allocation: data.allocation || {
-                    default: 1
+                    default: getAllocations[0].id,
                 },
                 external_id: data.external_id || null,
                 description: data.description || ''
             }
         })
+        console.log('Created server:', res);
+        return res;
+    }
+
+    /**
+     * Get allocations for a node
+     * @param nodeId Node ID
+     * @returns Allocations
+     */
+    async getAllocations(nodeId: string) {
+        const response: { data: { attributes: Allocation }[] } = await $fetch(`${process.env.PTERODACTYL_URL}/api/application/nodes/${nodeId}/allocations`, {
+            headers: this.headers
+        })
+        return response.data
+      .map((a: any) => a.attributes)
+      .filter((alloc: Allocation) => !alloc.assigned);
     }
 
     /**
@@ -202,6 +226,26 @@ export class PterodactylService {
         return $fetch(`${process.env.PTERODACTYL_URL}/api/application/nests/${id}/eggs`, {
             headers: this.headers
         });
+    }
+
+    /**
+     * Get Nodes
+     * @returns Nodes
+     */
+    async getNodes() {
+        return $fetch(`${process.env.PTERODACTYL_URL}/api/application/nodes`, {
+            headers: this.headers
+        })
+    }
+
+    /**
+     * Get Users
+     * @returns Users
+     */
+    async getUsers() {
+        return $fetch(`${process.env.PTERODACTYL_URL}/api/application/users`, {
+            headers: this.headers
+        })
     }
 
     async getCompatibleUsers() {

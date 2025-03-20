@@ -81,6 +81,14 @@
                 <textarea v-model="form.description" class="p-2 border rounded w-full"></textarea>
               </div>
               <div>
+                <label class="block text-sm font-medium mb-1">Node</label>
+                <select v-model="form.nodeId" required class="p-2 border rounded w-full">
+                  <option v-for="node in nodes" :key="node.id" :value="node.id">
+                    {{ node.id }} ({{ node.name }})
+                  </option>
+                </select>
+              </div>
+              <div>
                 <label class="block text-sm font-medium mb-1">Nests</label>
                 <select v-model="form.nestId" required class="p-2 border rounded w-full">
                   <option v-for="nest in nests" :key="nest.id" :value="nest.id">
@@ -154,7 +162,7 @@
                 <select v-model="form.userId" required class="p-2 border rounded flex-grow">
                     <option value="">Select Owner</option>
                     <option v-for="user in users" :key="user.id" :value="user.id">
-                    {{ user.name }} ({{ user.email }})
+                    {{ user.username }} ({{ user.email }})
                     </option>
                 </select>
                 <button 
@@ -211,19 +219,20 @@
   </template>
   
   <script setup>
-  const { $toast } = useNuxtApp()
+    const { $toast } = useNuxtApp()
   
-  const servers = ref([])
-  const nests = ref([])
-  const eggs = ref([])
-  const users = ref([])
-  const loading = ref(true)
-  const showModal = ref(false)
-  const isEditing = ref(false)
-  const submitting = ref(false)
-  const showDeleteModal = ref(false)
-  const selectedServer = ref(null)
-  const deleting = ref(false)
+    const servers = ref([])
+    const nodes = ref([])
+    const nests = ref([])
+    const eggs = ref([])
+    const users = ref([])
+    const loading = ref(true)
+    const showModal = ref(false)
+    const isEditing = ref(false)
+    const submitting = ref(false)
+    const showDeleteModal = ref(false)
+    const selectedServer = ref(null)
+    const deleting = ref(false)
   
   definePageMeta({
     layout: 'admin'
@@ -232,6 +241,7 @@
   const form = ref({
     name: '',
     description: '',
+    nodeId: '',
     nestId: '',
     eggId: '',
     userId: '', // Should be populated with actual user ID
@@ -254,9 +264,8 @@
     // In your script section, update the fetchUsers function
     const fetchUsers = async () => {
       try {
-        const response = await $fetch('/api/admin/users')
+        const response = await $fetch('/api/admin/pterodactyl-servers/users')
         users.value = response.data.map((user) => user.attributes)
-        console.log(users.value)
       } catch (error) {
         $toast.error('Failed to load users')
         console.error(error)
@@ -281,6 +290,7 @@
   }
   
   const openCreateModal = async () => {
+    await fetchNodes()
     await fetchNests()
     await fetchUsers()
     form.value = {
@@ -301,6 +311,7 @@
   }
   
     const openEditModal = async (server) => {
+      await fetchNodes()
       await fetchNests()
       await fetchUsers()
     
@@ -317,6 +328,7 @@
         id: server.id,
         name: server.name,
         description: server.description,
+        nodeId: server.nodeId,  // This should be the node ID
         nestId: server.nest,  // This should be the nest ID
         eggId: server.egg,    // This should be the egg ID
         userId: server.user?.id || '',  // Get the user ID
@@ -344,6 +356,7 @@
         // Format the data to match what the API expects
         const requestData = {
             name: form.value.name,
+            nodeId: form.value.nodeId,
             userId: form.value.userId,
             eggId: form.value.eggId,
             description: form.value.description,
@@ -435,6 +448,16 @@
       } finally {
         loading.value = false
       }
+    }
+
+    const fetchNodes = async () => {
+        try {
+            const response = await $fetch('/api/admin/pterodactyl-servers/nodes')
+            nodes.value = response.data.map((node) => node.attributes)
+        } catch (error) {
+            $toast.error('Failed to load nodes')
+            console.error(error)
+        }
     }
 
   const fetchNests = async () => {

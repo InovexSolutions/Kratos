@@ -2,11 +2,13 @@ import { PterodactylService } from '~/server/services/pterodactyl'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
+  console.log(body)
   
   // Prepare data in the correct format for Pterodactyl API
   const pterodactylData = {
     name: body.name,
-    userId: body.userId, // This should match the expected field name in your service
+    node: parseInt(body.nodeId), // This should match the expected field name in your service
+    userId: parseInt(body.userId), // This should match the expected field name in your service
     eggId: parseInt(body.eggId),
     description: body.description || '',
     limits: {
