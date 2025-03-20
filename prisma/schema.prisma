@@ -43,6 +43,7 @@ model User {
   billingInfo   Json?
   // Integration IDs
   stripeCustomerId String?   @map("stripe_customer_id") @db.VarChar(255)
+  pteroUserId      String?   @map("pterodactyl_user_id") @db.VarChar(255)
   isAdmin          Boolean   @default(false) @map("is_admin")
   // Timestamps
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
