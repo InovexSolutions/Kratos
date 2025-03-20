@@ -1,59 +1,300 @@
-import prismaClient from '../server/lib/prisma'
-const prisma = prismaClient
+import { Decimal } from '@prisma/client/runtime/library'
+import { prisma } from '~/server/lib/prisma'
 
 
 async function seed() {
-    // Create Minecraft game
-    const minecraft = await prisma.game.create({
+  // Create Data Centers
+  const [usWest, euCentral] = await Promise.all([
+    prisma.dataCenter.create({
       data: {
-        name: 'Minecraft',
-        slug: 'minecraft',
-        basePrice: 2.99,
-        pricingTiers: {
-          create: [
-            // Location
-            { type: 'location', label: 'EU', value: '1', price: 0 },
-            // { type: 'location', label: 'NA', value: '2', price: 3 },
-            // { type: 'location', label: 'Asia', value: 'asia', price: 0 },
-            // RAM Tiers
-            { type: 'ram', label: '1GB', value: '1', price: 0 },
-            { type: 'ram', label: '2GB', value: '2', price: 2 },
-            { type: 'ram', label: '4GB', value: '4', price: 4 },
-            { type: 'ram', label: '8GB', value: '8', price: 8 },
-            { type: 'ram', label: '16GB', value: '16', price: 15 },
-            { type: 'ram', label: '32GB', value: '32', price: 30 },
-            // Server Types
-            { type: 'server_type', label: 'Vanilla', value: '4', price: 0 },
-            { type: 'server_type', label: 'Paper', value: '1', price: 0 },
-            { type: 'server_type', label: 'Forge', value: '2', price: 0 },
-            { type: 'server_type', label: 'Sponge', value: '3', price: 0 },
-            // CPU Tiers
-            { type: 'cpu', label: '2 Cores', value: '2', price: 0 },
-            { type: 'cpu', label: '3 Cores', value: '3', price: 2 },
-            { type: 'cpu', label: '4 Cores', value: '4', price: 3 },
-            { type: 'cpu', label: '8 Cores', value: '8', price: 6 },
-            { type: 'cpu', label: '16 Cores', value: '16', price: 12 },
-            // Disk Tiers
-            { type: 'storage', label: '10GB', value: '10', price: 0 },
-            { type: 'storage', label: '20GB', value: '20', price: 0.5 },
-            { type: 'storage', label: '40GB', value: '40', price: 1 },
-            // Extras
-            { type: 'extra', label: 'Dedicated IP', value: 'true', price: 2 },
-            { type: 'extra', label: 'Dedicated Server', value: 'true', price: 5 }
-          ]
+        name: 'US West',
+        location: 'San Francisco, CA'
+      }
+    }),
+    prisma.dataCenter.create({
+      data: {
+        name: 'EU Central',
+        location: 'Frankfurt, DE'
+      }
+    })
+  ])
+
+  // Create Hosts
+  const [gameHost, vpsHost, dedicatedHost] = await Promise.all([
+    prisma.host.create({
+      data: {
+        hostname: 'game-eu-01',
+        dataCenterId: euCentral.id,
+        type: 'GAME_SERVER',
+        spec: {
+          cpu: 12,
+          ram: 32,
+          storage: 400
         },
-        modifiers: {
-          create: [
+        allocated: {
+          cpu: 32,
+          ram: 128,
+          storage: 200
+        },
+        status: 'AVAILABLE'
+      }
+    }),
+    prisma.host.create({
+      data: {
+        hostname: 'vps-lon-01',
+        dataCenterId: euCentral.id,
+        type: 'VPS',
+        spec: {
+          cpu: 64,
+          ram: 256,
+          storage: 50
+        },
+        allocated: {
+          cpu: 16,
+          ram: 64,
+          storage: 10
+        },
+        status: 'AVAILABLE'
+      }
+    }),
+    prisma.host.create({
+      data: {
+        hostname: 'dedicated-01',
+        dataCenterId: usWest.id,
+        type: 'DEDICATED_SERVER',
+        spec: {
+          cpu: 256,
+          ram: 1024,
+          storage: 5000
+        },
+        allocated: {
+          cpu: 64,
+          ram: 256,
+          storage: 1000
+        },
+        status: 'AVAILABLE'
+      }
+    })
+  ])
+
+  // Create Users
+  const [adminUser, regularUser] = await Promise.all([
+    prisma.user.create({
+      data: {
+        email: 'admin@cloudhost.io',
+        name: 'Admin User',
+        passwordHash: 'hashed_password_placeholder',
+        isAdmin: true,
+        billingInfo: {
+          street: '123 Cloud Street',
+          city: 'San Francisco',
+          state: 'CA',
+          country: 'USA',
+          zipCode: '94105'
+        }
+      }
+    }),
+    prisma.user.create({
+      data: {
+        email: 'user@example.com',
+        name: 'Regular User',
+        passwordHash: 'hashed_password_placeholder',
+        billingInfo: {
+          street: '456 User Avenue',
+          city: 'New York',
+          state: 'NY',
+          country: 'USA',
+          zipCode: '10001'
+        }
+      }
+    })
+  ])
+
+  // Create Pricing Plans
+  const [gamePlan, vpsPlan, dedicatedPlan] = await Promise.all([
+    prisma.pricingPlan.create({
+      data: {
+        serviceType: 'GAME_SERVER',
+        name: 'Minecraft',
+        description: '',
+        configTemplate: {
+          game: 'minecraft',
+          slots: 50,
+          version: '1.20.1'
+        },
+        priceMonthly: new Decimal(30.00),
+        specs: {
+          minCpu: 2,
+          maxCpu: 8,
+          baseStorage: 100
+        },
+        pricingModel: {
+          "basePrice": 0,
+          "modifiers": [
             {
-              type: 'conditional',
-              condition: { field: 'server_type', value: 'spigot' },
-              value: 1.2,
-              description: '20% increase for Spigot servers'
+              "type": "per_unit",
+              "unit": "gb",
+              "field": "ram",
+              "price": 2
+            },
+            {
+              "type": "per_unit",
+              "unit": "cores",
+              "field": "cpu",
+              "price": 2
             }
           ]
         }
       }
+    }),
+    prisma.pricingPlan.create({
+      data: {
+        serviceType: 'VPS',
+        name: 'VPS Basic',
+        configTemplate: {
+          os: 'ubuntu',
+          cpu: 4,
+          ramGB: 8
+        },
+        priceMonthly: new Decimal(15.00),
+        specs: {
+          minCpu: 1,
+          maxCpu: 4,
+          baseStorage: 50
+        }
+      }
+    }),
+    prisma.pricingPlan.create({
+      data: {
+        serviceType: 'DEDICATED_SERVER',
+        name: 'Enterprise Dedicated',
+        configTemplate: {
+          managed: true,
+          supportLevel: '24/7'
+        },
+        priceMonthly: new Decimal(500.00),
+        specs: {
+          minCpu: 32,
+          maxCpu: 256,
+          baseStorage: 1000
+        }
+      }
     })
+  ])
+
+  // Create Services
+  const [minecraftService, vpsService] = await Promise.all([
+    prisma.service.create({
+      data: {
+        type: 'GAME_SERVER',
+        userId: regularUser.id,
+        hostId: gameHost.id,
+        config: {
+          game: 'minecraft',
+          slots: 50,
+          version: '1.20.1',
+          mods: ['optifine']
+        },
+        renewedAt: new Date(),
+        terminationDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+      }
+    }),
+    prisma.service.create({
+      data: {
+        type: 'VPS',
+        userId: regularUser.id,
+        hostId: vpsHost.id,
+        config: {
+          os: 'ubuntu',
+          cpu: 4,
+          ramGB: 8,
+          storageGB: 100
+        },
+        renewedAt: new Date(),
+        terminationDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      }
+    })
+  ])
+
+  // Create Network Configs
+  await Promise.all([
+    prisma.networkConfig.create({
+      data: {
+        serviceId: minecraftService.id,
+        ipv4: '192.168.1.100',
+        ipv6: '2001:0db8:85a3::8a2e:0370:7334',
+        ports: {
+          tcp: [25565, 27015],
+          udp: [27015]
+        }
+      }
+    }),
+    prisma.networkConfig.create({
+      data: {
+        serviceId: vpsService.id,
+        ipv4: '203.0.113.5',
+        ipv6: '2001:0db8:85a3::8a2e:0370:7335',
+        ports: {
+          tcp: [22, 80, 443]
+        }
+      }
+    })
+  ])
+
+  // Create Orders and Invoices
+  const order = await prisma.order.create({
+    data: {
+      status: 'ACTIVE',
+      totalAmount: new Decimal(45.00),
+      userId: regularUser.id,
+      serviceId: minecraftService.id,
+      planId: gamePlan.id,
+      items: {
+        create: {
+          planId: gamePlan.id,
+          configuration: {
+            slots: 50,
+            mods: ['optifine']
+          },
+          unitPrice: new Decimal(30.00),
+          quantity: 1
+        }
+      }
+    }
+  })
+
+  await prisma.invoice.create({
+    data: {
+      amount: new Decimal(45.00),
+      status: 'PAID',
+      periodStart: new Date(),
+      periodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      paidAt: new Date(),
+      userId: regularUser.id,
+      orderId: order.id,
+      serviceId: minecraftService.id
+    }
+  })
+
+  // Create Cart with Items
+  await prisma.cart.create({
+    data: {
+      userId: regularUser.id,
+      items: {
+        create: {
+          planId: vpsPlan.id,
+          configuration: {
+            os: 'ubuntu',
+            cpu: 2
+          },
+          quantity: 1,
+          unitPrice: new Decimal(15.00)
+        }
+      }
+    }
+  })
+
+  console.log('🌱 Database seeded successfully')
 }
 
 seed().then(async () => {

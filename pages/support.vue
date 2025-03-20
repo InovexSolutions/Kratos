@@ -139,6 +139,9 @@
   </template>
   
   <script setup>
+  definePageMeta({
+  auth: false
+  });
   const activeFAQ = ref(null);
   
   const faqs = ref([

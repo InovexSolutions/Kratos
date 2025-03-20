@@ -1,420 +1,283 @@
-import { ofetch } from 'ofetch'
-import { servers, users } from '@prisma/client'
-import prisma from '../lib/prisma'
-import { Allocation, NodeResource, NodeWithLocation, PterodactylServer, ServerCreateParams } from '~/types/pterodactyl'
+import type { Allocation } from "~/types/pterodactyl";
 
 export class PterodactylService {
-  private readonly config = {
-    host: useRuntimeConfig().public.pterodactylUrl,
-    apiKey: useRuntimeConfig().pterodactylApiKey
-  }
+    private config = useRuntimeConfig()
+    private headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.PTERODACTYL_API_KEY}`
+    }
 
-  async createServer(user: users, config: ServerCreateParams): Promise<servers> {
-    const user_uid = await prisma.users.findUnique({
-      where: { email: user.email }
-    })
-    if (!user_uid) throw new Error('User not found')
-    const pterodactylUserId = await this.findOrCreateUser(user)
-    // console.log('[Pterodactyl] User ID:', pterodactylUserId)
-    const serverDetails = await this.createPterodactylServer(pterodactylUserId, config)
-    // console.log('[Pterodactyl] Nuxt User ID:', user_uid)
-    
-    return prisma.servers.create({
-      data: {
-        user_id: user_uid.id,
-        pterodactyl_server_id: serverDetails.id.toString(),
-        // identifier: serverDetails.identifier,
-        config: {
-          memory: config.memory,
-          cpu: config.cpu,
-          disk: config.disk
-        },
-        status: 'installing',
-        game_type: 'minecraft'
-        // game_type: config.game_type // Add the missing game_type property
-      }
-    })
-  }
-
-//   private 
-  async findOrCreateUser(user: users): Promise<string> {
-    try {
-      const response = await ofetch(`${this.config.host}/api/application/users?filter[email]=${user.email}`, {
-        headers: this.getHeaders()
-      })
-
-      console.debug('[Pterodactyl] User search response:', response)
-
-      if (response.data.length > 0) {
-        // console.log(`[Pterodactyl] Existing user found: ${response.data[0].attributes.id}`)
-        return response.data[0].attributes.id
-      }
-    //   if (response.data.length > 0) return response.data[0].attributes.id
-
-    //   console.log('[Pterodactyl] Creating new user for:', user.email)
-      const newUser = await ofetch(`${this.config.host}/api/application/users`, {
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: {
-          email: user.email,
-          username: this.generateUsername(user.email),
-          first_name: user.first_name,
-          last_name: user.last_name,
-          // password: this.generatePassword() Disable password generation for now
-        },
-        parseResponse: JSON.parse
-      })
-
-      // Directly access attributes from root object
-        if (!(newUser as any)?.attributes) {
-            throw new Error('Invalid egg data response structure');
-        }
-
-    //   console.log('[Pterodactyl] User creation response:', newUser)
-
-      prisma.users.update({
-        where: { email: user.email },
-        data: { pterodactyl_user_id: newUser.attributes.id }
+    async getServers() {
+        return $fetch(`${process.env.PTERODACTYL_URL}/api/application/servers`, {
+            headers: this.headers
         })
-      return newUser.attributes.id
-    } catch (error) {
-      if (error instanceof Error) {
-        console.error('[Pterodactyl] User creation failed:', {
-            error: (error as any).data?.errors || (error as any).message,
-            config: this.config,
-            user
-        })
-        throw new Error(`Pterodactyl user creation failed: ${(error as any).data?.errors?.[0]?.detail || error.message}`)
-      } else {
-        throw new Error('Pterodactyl user creation failed: Unknown error')
-      }
     }
-  }
 
-  async findAvailableNode(location: string, requiredMemory: number, requiredDisk: number): Promise<number> {
-    try {
-      const response = await ofetch(`${this.config.host}/api/application/nodes`, {
-        headers: this.getHeaders(),
-        query: {
-          filter: JSON.stringify({ location }),
-          include: 'allocations'
+    async createServer(data: any) {
+        console.log('Creating server:', data);
+        const getAllocations = await this.getAllocations(data.node);
+        if (getAllocations.length === 0) {
+            throw new Error('No allocations available on the selected node.');
         }
-      });
-  
-      const nodes = response.data
-        .map((n: any) => n.attributes)
-        .filter((node: NodeResource) => 
-          !node.maintenance_mode &&
-          this.nodeHasCapacity(node, requiredMemory, requiredDisk)
-        );
-  
-      if (!nodes.length) {
-        throw new Error(`No available nodes in ${location} with sufficient resources`);
-      }
-  
-      // Prioritize nodes with more available resources
-      return nodes.sort((a: NodeResource, b: NodeResource) => 
-        this.calculateAvailableMemory(b) - this.calculateAvailableMemory(a)
-      )[0].id;
-    } catch (error) {
-      console.error('Node selection failed:', error);
-      throw new Error('Failed to find available node');
+        const res = await $fetch(`${process.env.PTERODACTYL_URL}/api/application/servers`, {
+            method: 'POST',
+            headers: this.headers,
+            body: {
+                name: data.name,
+                node: data.nodeId,
+                user: data.userId,
+                egg: data.eggId,
+                docker_image: data.dockerImage || 'quay.io/pterodactyl/core:java',
+                startup: data.startup || 'java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar {{SERVER_JARFILE}}',
+                environment: data.environment || {
+                    SERVER_JARFILE: 'server.jar',
+                    VANILLA_VERSION: 'latest'
+                },
+                limits: {
+                    memory: data.limits?.memory || 1024,
+                    swap: data.limits?.swap || 0,
+                    disk: data.limits?.disk || 1024,
+                    io: data.limits?.io || 500,
+                    cpu: data.limits?.cpu || 100
+                },
+                feature_limits: {
+                    databases: data.feature_limits?.databases || 1,
+                    allocations: data.feature_limits?.allocations || 1,
+                    backups: data.feature_limits?.backups || 1
+                },
+                allocation: data.allocation || {
+                    default: getAllocations[0].id,
+                },
+                external_id: data.external_id || null,
+                description: data.description || ''
+            }
+        })
+        console.log('Created server:', res);
+        return res;
     }
-  }
-  
-  private nodeHasCapacity(node: NodeResource, requiredMemory: number, requiredDisk: number): boolean {
-    const hasMemory = node.memory_overallocate === -1 ? true :
-      (node.allocated_resources.memory + requiredMemory) <= 
-      (node.memory * (node.memory_overallocate / 100 + 1));
-  
-    const hasDisk = node.disk_overallocate === -1 ? true :
-      (node.allocated_resources.disk + requiredDisk) <= 
-      (node.disk * (node.disk_overallocate / 100 + 1));
-  
-    return hasMemory && hasDisk;
-  }
-  
-  private calculateAvailableMemory(node: NodeResource): number {
-    if (node.memory_overallocate === -1) return Infinity;
-    return (node.memory * (node.memory_overallocate / 100 + 1)) - node.allocated_resources.memory;
-  }
-  
-  async findAvailableNodeWithAllocation(location: number, requiredMemory: number, requiredDisk: number): Promise<{ nodeId: number, allocationId: number }> {
-    try {
-      // 1. Get all nodes in the selected location
-      const nodes = await this.getNodesByLocation(location);
-    //   console.log('[Pterodactyl] Nodes:', nodes);
-      
-      // 2. Filter and sort nodes
-      const suitableNodes = nodes
-        .filter(node => 
-          !node.maintenance_mode &&
-          this.nodeHasCapacity(node, requiredMemory, requiredDisk)
-        )
-        .sort((a, b) => 
-          this.calculateAvailableResources(b) - this.calculateAvailableResources(a)
-        );
-  
-      if (!suitableNodes.length) {
-        throw new Error(`No available nodes in location "${location}" with sufficient resources`);
-      }
-  
-      // 3. Find first node with available allocations
-      for (const node of suitableNodes) {
-        const allocations = await this.getAvailableAllocations(node.id);
-        if (allocations.length > 0) {
-          return {
-            nodeId: node.id,
-            allocationId: allocations[0].id
-          };
-        }
-      }
-  
-      throw new Error(`No available allocations in location "${location}" nodes`);
-    } catch (error) {
-      console.error('Node/allocation selection failed:', {
-        location,
-        requiredMemory,
-        requiredDisk,
-        error: (error as Error).message
-      });
-      throw error;
-    }
-  }
-  
-  private async getNodesByLocation(location: number): Promise<NodeWithLocation[]> {
-    // console.log('[Pterodactyl] Fetching nodes for location:', location)
-    const response = await ofetch(`${this.config.host}/api/application/nodes`, {
-      headers: this.getHeaders(),
-      query: {
-        filter: JSON.stringify({ location_id: location }),
-      }
-    });
-    // console.log('[Pterodactyl] getNodesByLocation response:', JSON.stringify(response, null, 2));
-    return response.data.map((n: any) => ({
-      ...n.attributes,
-      location: n.attributes.location_id
-    }));
-  }
-  
-  private async getAvailableAllocations(nodeId: number): Promise<Allocation[]> {
-    const response = await ofetch(`${this.config.host}/api/application/nodes/${nodeId}/allocations`, {
-      headers: this.getHeaders()
-    });
-  
-    return response.data
+
+    /**
+     * Get allocations for a node
+     * @param nodeId Node ID
+     * @returns Allocations
+     */
+    async getAllocations(nodeId: string) {
+        const response: { data: { attributes: Allocation }[] } = await $fetch(`${process.env.PTERODACTYL_URL}/api/application/nodes/${nodeId}/allocations`, {
+            headers: this.headers
+        })
+        return response.data
       .map((a: any) => a.attributes)
       .filter((alloc: Allocation) => !alloc.assigned);
-  }
-  
-  private calculateAvailableResources(node: NodeResource): number {
-    // Prioritize nodes with more available memory and disk
-    const availableMemory = node.memory_overallocate === -1 ? 
-      Infinity : 
-      node.memory * (1 + node.memory_overallocate/100) - node.allocated_resources.memory;
-    
-    const availableDisk = node.disk_overallocate === -1 ? 
-      Infinity : 
-      node.disk * (1 + node.disk_overallocate/100) - node.allocated_resources.disk;
-  
-    return Math.min(availableMemory, availableDisk);
-  }
-  
-
-//   private 
-  async createPterodactylServer(userId: string, config: ServerCreateParams): Promise<PterodactylServer> {
-    try {
-        const { nodeId, allocationId } = await this.findAvailableNodeWithAllocation(
-            config.location,
-            config.memory,
-            config.disk
-          );
-        // console.log('[Pterodactyl] Node and allocation:', nodeId, allocationId)
-        
-    //   console.log('[Pterodactyl] Fetching egg data:', config.nest, config.egg)
-      const eggData = await this.getEggData(config.nest, config.egg)
-    //   console.log('[Pterodactyl] Egg data:', eggData)
-      const serverName = config.servername || `Server-${Date.now()}`
-    //   console.log('[Pterodactyl] Creating server:', serverName)
-
-    //   console.log('[Pterodactyl] Allocation:', config.allocation.default)
-
-      const server = await $fetch(`${this.config.host}/api/application/servers`, {
-        method: 'POST',
-        headers: this.getHeaders(),
-        parseResponse: JSON.parse,
-        body: {
-          name: serverName,
-          user: userId,
-          egg: config.egg,
-          docker_image: eggData.docker_image,
-          startup: eggData.startup,
-          environment: await this.processEnvironment(eggData, config),
-          limits: {
-            memory: config.memory,
-            swap: config.swap,
-            disk: config.disk,
-            io: config.io,
-            cpu: config.cpu
-          },
-          feature_limits: {
-            databases: config.databases,
-            backups: config.backups,
-            allocations: config.allocation_limit
-          },
-          allocation: {
-            default: allocationId
-          },
-            node: nodeId,
-        }
-      })
-
-        // console.log('[Pterodactyl] Raw response Server Creation:', JSON.stringify(server, null, 2));
-
-        // Directly access attributes from root object
-        if (!(server as any)?.attributes) {
-            throw new Error('Invalid egg data response structure');
-        }
-
-        // console.log('[Pterodactyl] Server creation response:', server)
-        const server_id = (server as any).attributes.id
-        // console.log('[Pterodactyl] Server ID:', server_id)
-        const identifier = (server as any).attributes.identifier
-        // console.log('[Pterodactyl] Server Identifier:', identifier)
-
-      return {
-        id: server_id,
-        identifier: identifier,
-        // status: server.data.attributes.status,
-        // allocation: server.data.attributes.allocations[0]
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(`Server creation failed: ${(error as any).data?.errors?.[0]?.detail || error.message}`)
-      } else {
-        throw new Error('Server creation failed: Unknown error')
-      }
     }
-  }
 
-//   private 
-    async getEggData(nestId: number, eggId: number) {
-        try {
-          const response = await $fetch(
-            `${this.config.host}/api/application/nests/${nestId}/eggs/${eggId}?include=variables`,
-            { 
-              headers: this.getHeaders(),
-              parseResponse: JSON.parse
+    /**
+     * Update server details
+     * @param id Server ID
+     * @param data Server details data
+     */
+    async updateServerDetails(id: string, data: {
+        name?: string;
+        user?: number;
+        external_id?: string;
+        description?: string;
+    }) {
+        const res = $fetch(`${process.env.PTERODACTYL_URL}/api/application/servers/${id}/details`, {
+            method: 'PATCH',
+            headers: this.headers,
+            body: {
+                name: data.name,
+                user: data.user,
+                external_id: data.external_id,
+                description: data.description
             }
-          );
-      
-        //   console.log('[Pterodactyl] Raw response:', JSON.stringify(response, null, 2));
-      
-          // Directly access attributes from root object
-          if (!(response as any)?.attributes) {
-            throw new Error('Invalid egg data response structure');
-          }
-      
-          return (response as any).attributes;
+        })
+        // console.log('Updated server details:');
+        return res;
+    }
+
+    /**
+     * Update server build configuration
+     * @param id Server ID
+     * @param data Server build data
+     */
+    async updateServerBuild(id: string, data: {
+        allocation?: number;
+        memory?: number;
+        swap?: number;
+        io?: number;
+        cpu?: number;
+        disk?: number;
+        threads?: number | null;
+        feature_limits?: {
+            databases?: number;
+            allocations?: number;
+            backups?: number;
+        }
+    }) {
+        return $fetch(`${process.env.PTERODACTYL_URL}/api/application/servers/${id}/build`, {
+            method: 'PATCH',
+            headers: this.headers,
+            body: {
+                allocation: data.allocation,
+                memory: data.memory,
+                swap: data.swap,
+                io: data.io,
+                cpu: data.cpu,
+                disk: data.disk,
+                threads: data.threads,
+                feature_limits: {
+                    databases: data.feature_limits?.databases,
+                    allocations: data.feature_limits?.allocations,
+                    backups: data.feature_limits?.backups
+                }
+            }
+        })
+    }
+
+    /**
+     * Update server startup configuration
+     * @param id Server ID
+     * @param data Server startup data
+     */
+    async updateServerStartup(id: string, data: {
+        startup?: string;
+        environment?: Record<string, string>;
+        egg?: string;
+        image?: string;
+        skip_scripts?: boolean;
+    }) {
+        return $fetch(`${process.env.PTERODACTYL_URL}/api/application/servers/${id}/startup`, {
+            method: 'PATCH',
+            headers: this.headers,
+            body: {
+                startup: data.startup,
+                environment: data.environment,
+                egg: data.egg,
+                image: data.image,
+                skip_scripts: data.skip_scripts !== undefined ? data.skip_scripts : false
+            }
+        })
+    }
+
+    /**
+     * Comprehensive server update method that updates all aspects of the server
+     * @param id Server ID
+     * @param data Complete server data
+     */
+    async updateServer(id: string, data: any) {
+        // Split the update into different API calls as required
+        const results: any = {};
+
+        // Update details if relevant fields are present
+        if (data.name || data.userId || data.external_id || data.description) {
+            console.log('Updating server details:', data);
+            results.details = await this.updateServerDetails(id, {
+                name: data.name,
+                user: data.userId,
+                external_id: data.external_id,
+                description: data.description
+            });
+        }
+
+        // Update build if relevant fields are present
+        if (data.limits || data.feature_limits || data.allocation) {
+            results.build = await this.updateServerBuild(id, {
+                allocation: data.allocation,
+                memory: data.limits?.memory,
+                swap: data.limits?.swap,
+                io: data.limits?.io,
+                cpu: data.limits?.cpu,
+                disk: data.limits?.disk,
+                threads: data.limits?.threads,
+                feature_limits: data.feature_limits
+            });
+        }
+
+        // Update startup if relevant fields are present
+        if (data.startup || data.environment || data.eggId || data.dockerImage) {
+            results.startup = await this.updateServerStartup(id, {
+                startup: data.startup,
+                environment: data.environment,
+                egg: data.eggId,
+                image: data.dockerImage,
+                skip_scripts: data.skip_scripts
+            });
+        }
+
+        return results;
+    }
+
+    async deleteServer(id: string) {
+        return $fetch(`${process.env.PTERODACTYL_URL}/api/application/servers/${id}`, {
+            method: 'DELETE',
+            headers: this.headers
+        })
+    }
+
+    async getNests() {
+        return $fetch(`${process.env.PTERODACTYL_URL}/api/application/nests`, {
+            headers: this.headers
+        })
+    }
+
+    async getEggs(nestId: string | number | undefined) {
+        const id = nestId ? parseInt(nestId as string) : 1;
+        return $fetch(`${process.env.PTERODACTYL_URL}/api/application/nests/${id}/eggs`, {
+            headers: this.headers
+        });
+    }
+
+    /**
+     * Get Nodes
+     * @returns Nodes
+     */
+    async getNodes() {
+        return $fetch(`${process.env.PTERODACTYL_URL}/api/application/nodes`, {
+            headers: this.headers
+        })
+    }
+
+    /**
+     * Get Users
+     * @returns Users
+     */
+    async getUsers() {
+        return $fetch(`${process.env.PTERODACTYL_URL}/api/application/users`, {
+            headers: this.headers
+        })
+    }
+
+    async getCompatibleUsers() {
+        try {
+            // Get users from our database
+            const localUsers = await prisma.user.findMany({
+                select: {
+                    id: true,
+                    email: true,
+                    name: true,
+                    firstName: true,
+                    lastName: true,
+                    image: true
+                }
+            });
+
+            // Format to match Pterodactyl structure
+            return {
+                object: "list",
+                data: localUsers.map((user: { id: any; email: string; name: any; firstName: any; lastName: any; image: any; }) => ({
+                    object: "user",
+                    attributes: {
+                        id: user.id,
+                        email: user.email,
+                        name: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email.split('@')[0],
+                        image: user.image,
+                    }
+                }))
+            };
         } catch (error) {
-          console.error('[Pterodactyl] getEggData error:', {
-            nestId,
-            eggId,
-            error: (error as Error).message,
-            response: (error as any).data
-          });
-          throw new Error(`Failed to get egg data: ${(error as Error).message}`);
+            console.error('Error fetching users:', error);
+            throw error;
         }
     }
-
-  private getHeaders() {
-    return {
-      Authorization: `Bearer ${this.config.apiKey}`,
-      Accept: 'Application/vnd.Pterodactyl.v1+json',
-      'Content-Type': 'application/json'
-    }
-  }
-
-  private generateUsername(email: string): string {
-    return email.split('@')[0].replace(/[^\w]/g, '').slice(0, 15)
-  }
-
-  private generatePassword(length = 16): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()'
-    return Array.from(crypto.getRandomValues(new Uint32Array(length)))
-      .map((n) => chars[n % chars.length])
-      .join('')
-  }
-
-  // Add this method inside the PterodactylService class
-private async processEnvironment(
-    eggData: any,
-    config: ServerCreateParams
-  ): Promise<Record<string, any>> {
-    const environment: Record<string, any> = {};
-  
-    // Process egg variables
-    if (eggData?.relationships?.variables?.data) {
-      for (const variable of eggData.relationships.variables.data) {
-        const attr = variable.attributes;
-        const envVar = attr.env_variable;
-        
-        // Use config value if provided, otherwise use egg default
-        environment[envVar] = config[envVar as keyof ServerCreateParams] || attr.default_value;
-      }
-    }
-  
-    // Add port allocation handling if needed
-    if (config.port_array) {
-      try {
-        const portConfig = JSON.parse(config.port_array);
-        Object.assign(environment, this.processPortEnvironment(portConfig));
-      } catch (error) {
-        console.error('Invalid port array configuration:', error);
-      }
-    }
-  
-    return environment;
-  }
-  
-  // Add port environment processing
-  private processPortEnvironment(portConfig: Record<string, any>): Record<string, any> {
-    const portEnvironment: Record<string, any> = {};
-    
-    for (const [key, value] of Object.entries(portConfig)) {
-      if (key !== 'SERVER_PORT' && key !== 'NONE') {
-        portEnvironment[key] = value;
-      }
-    }
-    
-    return portEnvironment;
-  }
-
-  async getServerDetails(serverId: string): Promise<PterodactylServer> {
-    const response = await ofetch(`${this.config.host}/api/application/servers/${serverId}?include=allocations`, {
-      headers: this.getHeaders()
-    })
-    // console.log('[Pterodactyl] Server details:', response)
-    return {
-      id: response.attributes.id,
-      identifier: response.attributes.identifier,
-      name: response.attributes.name,
-      status: response.attributes.status,
-      allocation: response.attributes.relationships.allocations.data[0].attributes
-    }
-  }
-
-  async getServersFromUser(userId: string): Promise<PterodactylServer[]> {
-    const response = await ofetch(`${this.config.host}/api/application/users/${userId}/servers`, {
-      headers: this.getHeaders()
-    })
-
-    return response.data.map((server: any) => ({
-      id: server.attributes.id,
-      identifier: server.attributes.identifier,
-      name: server.attributes.name,
-      status: server.attributes.status,
-      allocation: server.attributes.relationships.allocations.data[0].attributes
-    }))
-  }
 }

@@ -1,3 +1,0 @@
--- AlterTable
-ALTER TABLE "Order" ALTER COLUMN "server_id" DROP NOT NULL,
-ALTER COLUMN "game_id" DROP NOT NULL;

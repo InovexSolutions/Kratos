@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
@@ -9,142 +9,352 @@ datasource db {
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
-model invoices {
-  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  order_id         String    @db.Uuid
-  user_id          String    @db.Uuid
-  server_id        String?   @db.Uuid
-  invoice_ninja_id String    @db.VarChar(255)
-  amount           Decimal   @db.Decimal(10, 2)
-  status           String?   @default("pending") @db.VarChar(20)
-  metadata         Json?
-  created_at       DateTime? @default(now()) @db.Timestamp(6)
-  updated_at       DateTime? @default(now()) @db.Timestamp(6)
-  servers          servers?  @relation(fields: [server_id], references: [id], onUpdate: NoAction)
-  users            users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  game_id          String?   @db.Uuid
-  game             Game?     @relation(fields: [game_id], references: [id])
-  order            Order     @relation(fields: [order_id], references: [id], onDelete: Cascade)
-
-  @@unique([invoice_ninja_id])
-  @@index([status], map: "idx_invoices_status")
-  @@index([user_id], map: "idx_invoices_user_id")
-  @@index([order_id], name: "idx_invoice_order")
+// Added enums for new functionality
+enum ServiceType {
+  GAME_SERVER
+  VPS
+  DEDICATED_SERVER
 }
 
-model servers {
-  id                    String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id               String     @db.Uuid
-  game_type             String     @db.VarChar(50)
-  config                Json
-  pterodactyl_server_id String?    @db.VarChar(255)
-  status                String?    @default("pending") @db.VarChar(20)
-  created_at            DateTime?  @default(now()) @db.Timestamp(6)
-  updated_at            DateTime?  @default(now()) @db.Timestamp(6)
-  invoices              invoices[]
-  users                 users      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  Order                 Order[]
-
-  @@index([user_id], map: "idx_servers_user_id")
-}
-
-model users {
-  id                      String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email                   String     @unique @db.VarChar(255)
-  password_hash           String     @db.VarChar(255)
-  first_name              String     @db.VarChar(100)
-  last_name               String     @db.VarChar(100)
-  phone_number            String?    @db.VarChar(20)
-  company_name            String?    @db.VarChar(255)
-  street_address          String     @db.VarChar(255)
-  street_address2         String?    @db.VarChar(255)
-  city                    String     @db.VarChar(100)
-  state                   String     @db.VarChar(50)
-  zip_code                String     @db.VarChar(20)
-  country                 String     @db.VarChar(50)
-  tax_id                  String?    @db.VarChar(50)
-  invoice_ninja_client_id String?    @db.VarChar(255)
-  pterodactyl_user_id     String?    @db.VarChar(255)
-  created_at              DateTime?  @default(now()) @db.Timestamp(6)
-  updated_at              DateTime?  @default(now()) @db.Timestamp(6)
-  invoices                invoices[]
-  servers                 servers[]
-  Order                   Order[]
-
-  @@index([email], map: "idx_users_email")
-  @@index([country], name: "idx_users_country")
-  @@index([tax_id], name: "idx_users_tax_id")
-}
-
-model Game {
-  id           String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name         String
-  slug         String          @unique
-  basePrice    Decimal         @db.Decimal(10, 2)
-  pricingTiers PricingTier[]
-  modifiers    PriceModifier[]
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  invoices     invoices[]
-  Order        Order[]
-}
-
-model PricingTier {
-  id        String   @id @default(dbgenerated("gen_random_uuid()"))
-  game      Game     @relation(fields: [gameId], references: [id])
-  gameId    String   @db.Uuid
-  type      String // 'ram', 'cpu', 'storage', 'server_type'
-  label     String
-  value     String // e.g. '8' (for GB), 'spigot' (for server type)
-  price     Decimal  @db.Decimal(10, 2)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model PriceModifier {
-  id          String   @id @default(dbgenerated("gen_random_uuid()"))
-  game        Game     @relation(fields: [gameId], references: [id])
-  gameId      String   @db.Uuid
-  type        String // 'multiplier', 'fixed', 'conditional'
-  condition   Json? // { field: 'server_type', value: 'spigot' }
-  value       Decimal  @db.Decimal(10, 2)
-  description String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model Order {
-  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id       String       @db.Uuid
-  po_number     String      @db.VarChar(255)
-  server_id     String?       @db.Uuid
-  game_id       String?       @db.Uuid
-  status        OrderStatus  @default(ACTIVE)
-  start_date    DateTime     @default(now())
-  end_date      DateTime?    @db.Timestamp(6)
-  billing_cycle BillingCycle @default(MONTHLY)
-  created_at    DateTime     @default(now()) @db.Timestamp(6)
-  updated_at    DateTime     @default(now()) @db.Timestamp(6)
-  recurring_id  String       @db.VarChar(255)
-  invoices      invoices[]
-  users         users?        @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  servers       servers?      @relation(fields: [server_id], references: [id], onDelete: Cascade)
-  games         Game?         @relation(fields: [game_id], references: [id], onDelete: Cascade)
-
-  @@index([user_id], name: "idx_order_user")
-  @@index([server_id], name: "idx_order_server")
-  @@index([status], name: "idx_order_status")
+enum ResourceStatus {
+  AVAILABLE
+  ALLOCATED
+  MAINTENANCE
+  RETIRED
 }
 
 enum OrderStatus {
+  UNPAID
+  PENDING
   ACTIVE
-  COMPLETED
-  CANCELED
-  PAUSED
+  SUSPENDED
+  CANCELLED
+}
+
+model User {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // Auth fields (keep existing auth structure)
+  name             String?
+  email            String    @unique
+  emailVerified    DateTime? @map("email_verified")
+  image            String?
+  passwordHash     String?   @map("password_hash") @db.VarChar(255)
+  // Consolidated address storage
+  billingInfo   Json?
+  // Integration IDs
+  stripeCustomerId String?   @map("stripe_customer_id") @db.VarChar(255)
+  pteroUserId      String?   @map("pterodactyl_user_id") @db.VarChar(255)
+  isAdmin          Boolean   @default(false) @map("is_admin")
+  // Timestamps
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt        DateTime  @default(now()) @map("updated_at") @db.Timestamp(6)
+
+  // Updated relations
+  services      Service[]
+  orders        Order[]
+  invoices      Invoice[]
+  subscriptions Subscription[]
+  hosts         Host[]          @relation("HostOwner") // For dedicated servers
+  Cart          Cart? // For cart functionality
+  Account       Account[]
+  Session       Session[]
+  Authenticator Authenticator[]
+
+  @@map("users")
+}
+
+model DataCenter {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String   @unique
+  location  String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  hosts Host[]
+
+  @@map("data_centers")
+}
+
+model Host {
+  id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hostname     String         @unique
+  dataCenterId String         @map("data_center_id") @db.Uuid
+  type         ServiceType
+  spec         Json // { cpu: 128, ramGB: 512, storageTB: 100 }
+  allocated    Json // { cpu: 32, ramGB: 128, storageTB: 50 }
+  status       ResourceStatus @default(AVAILABLE)
+  createdAt    DateTime       @default(now()) @map("created_at")
+
+  dataCenter DataCenter @relation(fields: [dataCenterId], references: [id])
+  services   Service[]
+  owner      User?      @relation("HostOwner", fields: [ownerId], references: [id])
+  ownerId    String?    @map("owner_id") @db.Uuid // For dedicated servers
+
+  @@map("hosts")
+}
+
+model Service {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type            ServiceType
+  userId          String      @map("user_id") @db.Uuid
+  hostId          String?     @map("host_id") @db.Uuid
+  config          Json // Game: { game: 'minecraft', slots: 50 }, VPS: { os: 'ubuntu', cpu: 4 }
+  terminationDate DateTime?   @map("termination_date")
+  renewedAt       DateTime?   @map("renewed_at")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @default(now()) @map("updated_at")
+
+  user         User           @relation(fields: [userId], references: [id])
+  host         Host?          @relation(fields: [hostId], references: [id])
+  pterodactyl  PterodactylServer?
+  orders       Order[]
+  invoices     Invoice[]
+  network      NetworkConfig?
+  Subscription Subscription[]
+
+  @@map("services")
+}
+
+model PterodactylServer {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serviceId String   @unique @map("service_id") @db.Uuid
+  nodeId    String   @map("node_id")
+  pteroId   Int      @map("ptero_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  service Service @relation(fields: [serviceId], references: [id])
+
+  @@map("pterodactyl_servers")
+}
+
+model PricingPlan {
+  id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serviceType    ServiceType @map("service_type")
+  name           String      @unique
+  description    String    @map("description") @db.Text @default("")
+  configTemplate Json        @map("config_template")
+  priceMonthly   Decimal     @map("price_monthly") @db.Decimal(10, 4)
+  pricingModel   Json? // Add this new field
+  specs          Json // { minCpu: 2, maxCpu: 8, baseStorage: 100 }
+
+  orders Order[]
+
+  CartItem CartItem[]
+  OrderItem OrderItem[]
+  @@map("pricing_plans")
+}
+
+model NetworkConfig {
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serviceId String  @unique @map("service_id") @db.Uuid
+  ipv4      String?
+  ipv6      String?
+  ports     Json? // { tcp: [25565, 27015], udp: [27015] }
+
+  service Service @relation(fields: [serviceId], references: [id])
+
+  @@map("network_configs")
+}
+
+// Updated Order model
+model Order {
+  id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  status    OrderStatus @default(PENDING)
+  totalAmount  Decimal  @db.Decimal(10, 2)
+  stripeSessionId String?
+  items       OrderItem[]
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @default(now()) @map("updated_at")
+
+  // Relations
+  userId       String        @map("user_id") @db.Uuid
+  user         User          @relation(fields: [userId], references: [id])
+  serviceId    String?       @map("service_id") @db.Uuid
+  service      Service?      @relation(fields: [serviceId], references: [id])
+  planId       String?       @map("plan_id") @db.Uuid
+  plan         PricingPlan?  @relation(fields: [planId], references: [id])
+  invoices     Invoice[]
+  subscription Subscription?
+
+  @@index([userId])
+  @@index([serviceId])
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id           String  @id @default(dbgenerated("gen_random_uuid()"))
+  order        Order   @relation(fields: [orderId], references: [id])
+  orderId      String  @db.Uuid
+  plan         PricingPlan @relation(fields: [planId], references: [id])
+  planId       String  @db.Uuid
+  configuration Json
+  unitPrice    Decimal @db.Decimal(10, 2)
+  quantity     Int
+
+  @@map("order_items")
+}
+
+
+// Updated Invoice model
+model Invoice {
+  id                    String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  amount                Decimal       @db.Decimal(10, 2)
+  status                InvoiceStatus @default(PENDING)
+  periodStart           DateTime?     @map("period_start") @db.Timestamp(6)
+  periodEnd             DateTime?     @map("period_end") @db.Timestamp(6)
+  paidAt                DateTime?     @map("paid_at") @db.Timestamp(6)
+  stripePaymentIntentId String?       @unique @map("stripe_payment_intent_id")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @default(now()) @map("updated_at")
+
+  // Relations
+  orderId   String   @map("order_id") @db.Uuid
+  order     Order    @relation(fields: [orderId], references: [id])
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id])
+  serviceId String?  @map("service_id") @db.Uuid
+  service   Service? @relation(fields: [serviceId], references: [id])
+
+  @@index([orderId])
+  @@index([userId])
+  @@map("invoices")
+}
+
+// Updated Subscription model
+model Subscription {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  stripeSubscriptionId String    @unique @map("stripe_subscription_id") @db.VarChar(255)
+  status               SubStatus @default(active)
+  currentPeriodEnd     DateTime  @map("current_period_end") @db.Timestamp(6)
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @default(now()) @map("updated_at")
+
+  // Relations
+  orderId   String  @map("order_id") @db.Uuid
+  order     Order   @relation(fields: [orderId], references: [id])
+  userId    String  @map("user_id") @db.Uuid
+  user      User    @relation(fields: [userId], references: [id])
+  serviceId String  @map("service_id") @db.Uuid
+  service   Service @relation(fields: [serviceId], references: [id])
+
+  @@unique([orderId])
+  @@index([userId])
+  @@index([orderId])
+  @@map("subscriptions")
+}
+
+model Cart {
+  id        String    @id @default(dbgenerated("gen_random_uuid()"))
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String    @unique @db.Uuid
+  items     CartItem[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now())
+}
+
+model CartItem {
+  id           String  @id @default(dbgenerated("gen_random_uuid()"))
+  cart         Cart    @relation(fields: [cartId], references: [id])
+  cartId       String
+  plan         PricingPlan @relation(fields: [planId], references: [id])
+  planId       String @db.Uuid
+  configuration Json
+  quantity     Int     @default(1)
+  unitPrice    Decimal @db.Decimal(10, 2)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now())
+}
+
+///////////////////////////////////////////
+// AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA //
+///////////////////////////////////////////
+model Account {
+  userId            String   @db.Uuid
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?  @db.Text
+  access_token      String?  @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?  @db.Text
+  session_state     String?
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt         DateTime @default(now()) @map("updated_at") @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  sessionToken String   @unique @db.Text
+  userId       String   @db.Uuid
+  expires      DateTime @db.Timestamp(6)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime @default(now()) @map("updated_at") @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @db.Text
+  expires    DateTime @db.Timestamp(6)
+
+  @@id([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Authenticator {
+  credentialID         String   @unique @db.Text
+  userId               String   @db.Uuid
+  providerAccountId    String
+  credentialPublicKey  String   @db.Text
+  counter              Int
+  credentialDeviceType String
+  credentialBackedUp   Boolean
+  transports           String?
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt            DateTime @default(now()) @map("updated_at") @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, credentialID])
+  @@map("authenticators")
+}
+
+///////////////////////////////////////////
+// AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA //
+///////////////////////////////////////////
+// Enums remain the same
+enum InvoiceStatus {
+  PENDING
+  CREATED
+  PAID
+  PARTIAL
+  FAILED
+  REFUNDED
+  VOID
+}
+
+enum SubStatus {
+  active
+  past_due
+  unpaid
+  canceled
+  incomplete
+  incomplete_expired
+  trialing
 }
 
 enum BillingCycle {
   MONTHLY
   QUARTERLY
+  SEMIANNUAL
   ANNUAL
 }

@@ -1,20 +1,33 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  plugins: [
-    '~/plugins/auth.client.js',
-  ],
+  // plugins: [
+  //   '~/plugins/auth.client.js',
+  // ],
   compatibilityDate: '2024-11-01',
   routeRules: {
     // Public pages
     '/': { ssr: true },
     '/about': { ssr: true },
     '/contact': { ssr: true },
-    
+
     // Auth pages
-    '/auth/**': { ssr: false },
-    
+    // '/auth/**': { ssr: false },
+
+    // Admin pages
+    '/admin/**': { ssr: false },
+
+    // '/dashboard': { ssr: false },
+    '/dashboard/**': {
+      ssr: false,
+      cors: true,
+      headers: {
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Allow-Origin': '*',
+      },
+    },
+
     // Protected pages
-    //'/dashboard/**': { middleware: 'auth' }
+    // '/dashboard/**': { middleware: 'auth' }
   },
   devtools: {
     enabled: true,
@@ -23,13 +36,27 @@ export default defineNuxtConfig({
       enabled: true,
     },
   },
-  modules: [
-    ['@pinia/nuxt', { autoImports: ['defineStore'] }],
-    'pinia-plugin-persistedstate/nuxt', // Add persisted state
-     '@nuxtjs/tailwindcss', '@nuxt/image', '@nuxt/icon'
-  ],
+  modules: [['@pinia/nuxt', { autoImports: ['defineStore'] }], // Add persisted state
+    'pinia-plugin-persistedstate/nuxt', '@nuxtjs/tailwindcss', '@nuxt/image', '@nuxt/icon', '@sidebase/nuxt-auth'],
+  auth: {
+    isEnabled: true,
+    disableServerSideAuth: false,
+    globalAppMiddleware: true,
+    originEnvKey: 'AUTH_ORIGIN',
+    baseURL: 'http://localhost:3000/api/auth',
+    // provider: { /* your provider config */ },
+    provider: {
+      type: 'authjs',
+      trustHost: false,
+      addDefaultCallbackUrl: true
+    },
+    sessionRefresh: {
+      enablePeriodically: false,
+      enableOnWindowFocus: true,
+    },
+  },
   // piniaPluginPersistedstate: {
-    // storage: 'localStorage'
+  // storage: 'localStorage'
   // },
   components: [
     {
@@ -60,4 +87,13 @@ export default defineNuxtConfig({
       }
     }
   },
+  imports: {
+    autoImport: true,
+    presets: [
+      {
+        from: 'h3',
+        imports: ['defineEventHandler', 'getCookie', 'setCookie', 'deleteCookie']
+      }
+    ]
+  }
 })

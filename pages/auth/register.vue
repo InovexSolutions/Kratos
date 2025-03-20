@@ -132,6 +132,9 @@
 </template>
 
 <script setup>
+definePageMeta({
+  auth: false
+});
 import { countries } from '~/server/utils/countries';
 const form = reactive({
   first_name: '',

@@ -1,78 +1,103 @@
-# WORK IN PROGRESS
-![Alt](https://repobeats.axiom.co/api/embed/c04a4a2e489e7db7a22953072bd1d59bd58c9d5b.svg "Repobeats analytics image")
+# 🚀 Kratos - Game Server Management Platform
 
-# Nuxt Minimal Starter
+A modern, scalable solution for deploying and managing game servers with ease. Built with Nuxt 3 and cutting-edge technologies.
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Node](https://img.shields.io/badge/node-%3E%3D16-brightgreen.svg)
 
-## Setup
+## ✨ Features
 
-Make sure to install dependencies:
+- 🎮 One-click game server deployment
+- 📊 Real-time server monitoring and metrics
+- 🔐 Secure authentication and authorization
+- 💳 Built-in billing and subscription management
+- 🎛️ Advanced configuration options for each game
+- 🔄 Automatic scaling and load balancing
+- 📱 Responsive dashboard interface
 
+## 🛠️ Tech Stack
+
+- **Frontend**: Nuxt 3, Vue 3, TailwindCSS
+- **Backend**: Node.js, Prisma
+- **Infrastructure**: Docker, Kubernetes
+- **Authentication**: OAuth 2.0 - Auth.js
+- **Billing**: Stripe API - More to come
+- **Monitoring**: Custom metrics collection
+
+## 🌐 Demo
+
+A live production demo is available at [https://kratoshost.com](https://kratoshost.com).
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js (>=16.x)
+- PNPM (recommended) or NPM
+- Docker (for local development)
+
+### Installation
+
+1. Clone the repository:
 ```bash
-# npm
-npm install
+git clone https://github.com/KratosHost/Kratos.git
+cd Kratos
+```
 
-# pnpm
+2. Install dependencies:
+```bash
 pnpm install
-
-# yarn
-yarn install
-
-# bun
-bun install
 ```
 
-## Development Server
-
-Start the development server on `http://localhost:3000`:
-
+3. Set up environment variables:
 ```bash
-# npm
-npm run dev
+cp .env.example .env
+```
 
-# pnpm
+4. Provision the database:
+```bash
+pnpm prisma migrate dev
+```
+
+5. Seed the database (optional):
+```bash
+pnpm prisma db seed
+```
+
+6. Start the development server:
+```bash
 pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
 ```
 
-## Production
+The application will be available at `http://localhost:3000`
 
-Build the application for production:
+## 🏗️ Building for Production
 
 ```bash
-# npm
-npm run build
-
-# pnpm
 pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
 ```
 
-Locally preview production build:
-
+To preview the production build:
 ```bash
-# npm
-npm run preview
-
-# pnpm
 pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
 ```
 
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+## 📖 Documentation
+
+For detailed documentation, please visit our [Wiki](https://github.com/KratosHost/Kratos/wiki).
+
+## 🤝 Contributing
+
+We welcome contributions! Please read our [Contributing Guide](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Credits
+
+Built with ❤️ by the Kratos team.
+
+## 📧 Contact
+
+For support or inquiries, please [open an issue](https://github.com/KratosHost/Kratos/issues) or contact our support team at support-gh@kratoshost.com.

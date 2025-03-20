@@ -94,12 +94,11 @@
   const { data: invoices, pending, error } = await useAsyncData('invoices', 
   async () => {
     try {
-      const response = await $fetch('/api/invoices/customer', {
-        headers: {
-          Authorization: `Bearer ${auth.token}`,
-          'Content-Type': 'application/json' // Explicit content type
-        }
+      const { data: response } = await $fetch('/api/invoices/customer', {
+        credentials: 'include'
       });
+
+      console.log('Invoices response:', response);
       
       // Validate response structure
       if (!Array.isArray(response)) {

@@ -1,4 +1,4 @@
-import prisma from "../lib/prisma"
+import { prisma } from "~/server/lib/prisma"
 
 export async function calculatePrice(gameSlug: string, configuration: Record<string, any>) {
     const game = await prisma.game.findUnique({

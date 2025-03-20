@@ -19,23 +19,30 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@auth/prisma-adapter": "^2.8.0",
     "@nuxt/icon": "^1.10.3",
     "@nuxt/image": "^1.9.0",
     "@nuxt/schema": "^3.15.4",
-    "@nuxtjs/tailwindcss": "^6.13.1",
+    "@nuxtjs/tailwindcss": "^6.13.2",
     "@parcel/watcher": "2.5.1",
     "@pinia/nuxt": "^0.10.1",
-    "@prisma/client": "^6.4.0",
+    "@prisma/client": "^6.5.0",
+    "@sidebase/nuxt-auth": "0.10.0",
+    "@stripe/stripe-js": "^6.1.0",
     "bcrypt": "^5.1.1",
-    "core-js": "2.6.12",
+    "core-js": "3.41.0",
+    "h3": "^1.15.1",
     "jsonwebtoken": "^9.0.2",
+    "next-auth": "~4.21.1",
     "nuxt": "^3.15.4",
     "pinia": "^3.0.1",
     "pinia-plugin-persistedstate": "^4.2.0",
-    "prisma": "^6.3.1",
     "sharp": "^0.33.5",
+    "stripe": "^17.7.0",
     "vue": "latest",
-    "vue-router": "latest"
+    "vue-router": "latest",
+    "vue3-toastify": "^0.2.8",
+    "zod": "^3.24.2"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -46,12 +53,15 @@
       "core-js",
       "esbuild",
       "prisma",
-      "sharp"
+      "sharp",
+      "vue-demi"
     ]
   },
   "devDependencies": {
+    "@iconify-json/heroicons": "^1.2.2",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^22.13.4",
+    "prisma": "^6.5.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3"
   }

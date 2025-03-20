@@ -27,22 +27,27 @@
         </div>
       </div>
 
+      <div>
+        <SubscriptionStatus />
+        <!-- <InvoiceLinks /> -->
+        <!-- <CheckoutButton :price-id="selectedPriceId" :config="serverConfig" /> -->
+      </div>
+
       <!-- Server Grid -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div 
-          v-for="(server, index) in servers"
-          :key="server.id"
+        <div v-for="(server, index) in servers" :key="server.id"
           class="bg-gray-800/40 p-6 rounded-xl border border-gray-700/50 hover:border-purple-500/30 transition-all duration-300 group animate-fade-in-up"
-          :style="`animation-delay: ${index * 50}ms`"
-        >
+          :style="`animation-delay: ${index * 50}ms`">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-xl font-bold text-gray-100">{{ server.name }}</h3>
-            <span class="flex items-center text-sm" :class="server.status === 'online' ? 'text-green-400' : 'text-red-400'">
-              <span class="w-2 h-2 rounded-full mr-2" :class="server.status === 'online' ? 'bg-green-400' : 'bg-red-400'"></span>
+            <span class="flex items-center text-sm"
+              :class="server.status === 'online' ? 'text-green-400' : 'text-red-400'">
+              <span class="w-2 h-2 rounded-full mr-2"
+                :class="server.status === 'online' ? 'bg-green-400' : 'bg-red-400'"></span>
               {{ server.status }}
             </span>
           </div>
-          
+
           <div class="flex items-center mb-6">
             <NuxtImg :src="`/${server.image}`" provider="ipx" class="w-12 h-12 rounded-lg mr-4" loading="lazy" />
             <div>
@@ -66,22 +71,28 @@
         </div>
       </div>
 
+      <!-- Create an orders redirect with the same style as others -->
+      <NuxtLink to="/dashboard/orders">
+        <div class="bg-gray-800/40 p-6 rounded-xl border border-gray-700/50 animate-fade-in-up">
+          <div class="text-3xl font-bold text-blue-400 mb-2">Orders</div>
+            <div class="text-gray-400">Manage your active orders</div>
+            <div class="text-blue-400 hover:text-blue-300 transition-colors flex items-center justify-end">
+              View <span class="ml-2">→</span>
+            </div>
+        </div>
+      </NuxtLink>
+
       <!-- Create Server Button -->
       <div class="mt-12 text-center animate-fade-in-up delay-300">
-        <button 
-          @click="showCreateServerModal = true"
-          class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-4 rounded-xl text-lg font-semibold transform hover:scale-105 transition-all duration-300 shadow-lg shadow-blue-500/20"
-        >
+        <button @click="showCreateServerModal = true"
+          class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-4 rounded-xl text-lg font-semibold transform hover:scale-105 transition-all duration-300 shadow-lg shadow-blue-500/20">
           <span class="mr-2">🎮</span> Create New Server
         </button>
       </div>
     </div>
 
     <!-- Create Server Modal -->
-    <CreateServerModal 
-      v-if="showCreateServerModal"
-      @close="showCreateServerModal = false"
-    />
+    <CreateServerModal v-if="showCreateServerModal" @close="showCreateServerModal = false" />
   </div>
 </template>
 

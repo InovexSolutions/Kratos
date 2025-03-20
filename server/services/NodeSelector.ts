@@ -1,100 +1,53 @@
 // services/NodeSelector.ts
-import type { Node, ServerRequirements, NodeSelectionResult } from '@/types/pterodactyl';
+import { prisma } from "~/server/lib/prisma"
+
+interface HostRequirements {
+  cpu: number // 100 = 1 core
+  memory: number // MB
+  disk: number   // MB
+  location: string
+}
 
 export class NodeSelector {
-    private nodeCache: Node[] = [];
-    private lastFetch: number = 0;
-  
-    constructor(private apiUrl: string, private apiKey: string) {}
-  
-    async findOptimalNode(locationId: number, requirements: ServerRequirements): Promise<number | null> {
-      await this.refreshNodes();
-      
-      const viableNodes = this.nodeCache
-        .filter(node => 
-          node.attributes.location_id === locationId &&
-          !node.attributes.maintenance_mode
-        )
-        .map(node => ({
-          node,
-          score: this.calculateNodeScore(node, requirements)
-        }))
-        .filter(({ score }) => score > 0)
-        .sort((a, b) => b.score - a.score);
-  
-      return viableNodes[0]?.node.id || null;
-    }
-  
-    private calculateNodeScore(node: Node, req: ServerRequirements): number {
-      const unlimitedResources = 
-        node.attributes.memory_overallocate === -1 && 
-        node.attributes.disk_overallocate === -1;
-  
-      if (unlimitedResources) return Infinity;
-  
-      const availableMemory = this.calculateAvailableResource(
-        node.attributes.memory,
-        node.attributes.memory_overallocate,
-        node.attributes.allocated_resources.memory,
-        req.memory
-      );
-  
-      const availableDisk = this.calculateAvailableResource(
-        node.attributes.disk,
-        node.attributes.disk_overallocate,
-        node.attributes.allocated_resources.disk,
-        req.disk
-      );
-  
-      if (availableMemory < 0 || availableDisk < 0) return 0;
-  
-      // Prioritize nodes with more resources and lower utilization
-      return (availableMemory + availableDisk) * 0.8 + 
-             (node.attributes.memory - node.attributes.allocated_resources.memory) * 0.2;
-    }
-  
-    private calculateAvailableResource(
-      total: number,
-      overallocate: number,
-      allocated: number,
-      required: number
-    ): number {
-      const maxAllowed = overallocate === -1 
-        ? Infinity 
-        : total * (1 + overallocate / 100);
-        
-      const available = maxAllowed - allocated;
-      return available - required;
-    }
-  
-    private async refreshNodes(): Promise<void> {
-      if (Date.now() - this.lastFetch < 300000) return; // 5 min cache
-      
-      try {
-        const response = await fetch(`${this.apiUrl}/nodes`, {
-          headers: { Authorization: `Bearer ${this.apiKey}` }
-        });
-        
-        this.nodeCache = await response.json();
-        this.lastFetch = Date.now();
-      } catch (error) {
-        console.error('Failed to refresh nodes:', error);
-        throw new Error('Node availability check failed');
-      }
-    }
+  async findOptimalHost(requirements: HostRequirements): Promise<string | null> {
+    const viableHosts = await prisma.host.findMany({
+      where: {
+        dataCenter: { name: requirements.location },
+        status: 'AVAILABLE',
+        spec: {
+          path: ['cpu'],
+          gte: requirements.cpu / 100
+        }
+      },
+      include: { dataCenter: true }
+    });
+    console.log('Viable hosts:', viableHosts);
+
+    const scoredHosts = viableHosts.map(host => ({
+      host,
+      score: this.calculateHostScore(host, requirements)
+    })).filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score);
+    
+    console.log('Scored hosts:', scoredHosts);
+
+    return scoredHosts[0]?.host.id || null;
   }
-  
-  // Usage example:
-  const nodeSelector = new NodeSelector('https://ptero.example.com', 'API_KEY');
-  
-  // Get user-selected location from UI
-  // const selectedLocation = getUserSelectedLocation(); 
-  const selectedLocation = 1;
-  
-  const requirements = {
-    memory: 4096, // MB
-    disk: 20480 // MB
-  };
-  
-  const optimalNodeId = await nodeSelector.findOptimalNode(selectedLocation, requirements);
-  
+
+  private calculateHostScore(host: any, req: HostRequirements): number {
+    const spec = host.spec as Record<string, number>;
+    // console.log('Host spec:', spec);
+    const allocated = host.allocated as Record<string, number>;
+    // console.log('Host allocated:', allocated);
+    const availableMemory = spec.ram - (allocated.ram || 0);
+    // console.log('Available memory:', availableMemory);
+    const availableDisk = spec.storage - (allocated.storage || 0);
+    // console.log('Available disk:', availableDisk);
+
+    return Math.min(
+      availableMemory - req.memory / 1024,
+      availableDisk - req.disk / 1024,
+      spec.cpu - req.cpu / 100
+    );
+  }
+}

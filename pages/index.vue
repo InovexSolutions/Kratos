@@ -76,6 +76,9 @@
 </template>
 
 <script setup>
+definePageMeta({
+  auth: false
+});
 // Featured Games Data
 const featuredGames = ref([
     {

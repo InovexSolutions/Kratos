@@ -11,6 +11,9 @@
 </template>
 
 <script setup>
+definePageMeta({
+  auth: false
+});
 defineProps({
     error: {
         type: Object,
