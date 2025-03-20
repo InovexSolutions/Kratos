@@ -49,7 +49,7 @@
             </template>
   
             <!-- User Dropdown -->
-            <div v-else class="relative group">
+            <div v-else class="relative" @mouseenter="isDropdownOpen = true" @mouseleave="isDropdownOpen = false">
               <button class="flex items-center space-x-2">
                 <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 flex items-center justify-center">
                   <span class="text-white text-sm font-bold">
@@ -60,7 +60,11 @@
               </button>
   
               <!-- Dropdown Menu -->
-              <div class="absolute right-0 mt-2 w-48 bg-gray-900 border border-gray-800 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <div 
+                v-show="isDropdownOpen"
+                class="absolute right-0 top-full mt-1 w-48 bg-gray-900 border border-gray-800 rounded-lg shadow-lg transition-all duration-200 origin-top"
+                :class="isDropdownOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'"
+              >
                 <NuxtLink 
                   to="/dashboard" 
                   class="block px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white"
@@ -178,6 +182,7 @@
   const image = user?.image || ''
   const auth = useAuthStore()
   const isMobileMenuOpen = ref(false)
+  const isDropdownOpen = ref(false)
   
   const scrollToGames = () => {
     const gamesSection = document.querySelector('#games')
