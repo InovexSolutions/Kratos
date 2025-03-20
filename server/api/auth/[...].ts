@@ -6,6 +6,7 @@ import { prisma } from "~/server/lib/prisma"
 // import { prisma } from "@/prisma"
 import DiscordProvider from 'next-auth/providers/discord'
 import GithubProvider from 'next-auth/providers/github'
+import CredentialsProvider from "next-auth/providers/credentials";
 
 export default NuxtAuthHandler({
     // A secret string you define, to ensure correct encryption
@@ -30,6 +31,25 @@ export default NuxtAuthHandler({
             clientId: process.env.DISCORD_ID!, // Your Discord application ID
             clientSecret: process.env.DISCORD_SECRET! // Your Discord application secret
         }),
+        // CredentialsProvider.default({
+            // credentials: {
+                // email: { label: 'Email', type: 'email', placeholder: '' },
+                // password: { label: 'Password', type: 'password' }
+            // },
+            // async authorize(credentials: { email: any }, req: any) {
+                // const user = await prisma.user.findFirst({
+                    // where: {
+                        // email: credentials.email
+                    // }
+                // })
+                // if (user // && user.password === credentials.password
+                // ) {
+                    // return user
+                // } else {
+                    // return null
+                // }
+            // }
+        // }),
         /*
         CredentialsProvider({
             credentials: {

@@ -104,12 +104,25 @@ model Service {
 
   user         User           @relation(fields: [userId], references: [id])
   host         Host?          @relation(fields: [hostId], references: [id])
+  pterodactyl  PterodactylServer?
   orders       Order[]
   invoices     Invoice[]
   network      NetworkConfig?
   Subscription Subscription[]
 
   @@map("services")
+}
+
+model PterodactylServer {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serviceId String   @unique @map("service_id") @db.Uuid
+  nodeId    String   @map("node_id")
+  pteroId   Int      @map("ptero_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  service Service @relation(fields: [serviceId], references: [id])
+
+  @@map("pterodactyl_servers")
 }
 
 model PricingPlan {

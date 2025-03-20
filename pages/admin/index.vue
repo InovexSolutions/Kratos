@@ -49,6 +49,9 @@
   </template>
   
   <script setup>
+  definePageMeta({
+    layout: 'admin'
+  });
   const { data: stats } = await useAsyncData('admin-stats', 
     () => $fetch('/api/admin/stats'),
     {

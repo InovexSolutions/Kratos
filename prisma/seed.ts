@@ -23,8 +23,8 @@ async function seed() {
   const [gameHost, vpsHost, dedicatedHost] = await Promise.all([
     prisma.host.create({
       data: {
-        hostname: 'game-nyc-01',
-        dataCenterId: usWest.id,
+        hostname: 'game-eu-01',
+        dataCenterId: euCentral.id,
         type: 'GAME_SERVER',
         spec: {
           cpu: 12,
