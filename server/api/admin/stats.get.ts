@@ -6,17 +6,17 @@ export default defineEventHandler(async (event) => {
     // await requireAdminUser(event);
   
     const [totalServers, activeUsers, monthlyRevenue] = await Promise.all([
-      prisma.servers.count(),
+      prisma.service.count(),
     //   prisma.users.count({ where: { status: 'active' }}),
-      prisma.users.count(),
+      prisma.user.count(),
     //   prisma.invoices.aggregate({
         // _sum: { amount: true }
     //   })
-      prisma.invoices.aggregate({
+      prisma.invoice.aggregate({
         _sum: { amount: true },
         where: { 
-          status: 'paid',
-          created_at: { gte: new Date(new Date().setMonth(new Date().getMonth() - 1)) }
+          status: 'PAID',
+          createdAt: { gte: new Date(new Date().setMonth(new Date().getMonth() - 1)) }
         }
       })
     ]);

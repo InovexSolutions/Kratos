@@ -1,3 +1,4 @@
+import { getServerSession } from '#auth'
 import { z } from 'zod'
 import { prisma } from '~/server/lib/prisma'
 
@@ -6,9 +7,10 @@ const hostUpdateSchema = z.object({
   dataCenterId: z.string().uuid().optional(),
   type: z.enum(['GAME_SERVER', 'VPS', 'DEDICATED_SERVER']).optional(),
   spec: z.object({
+    ip: z.string().optional(),
     cpu: z.number().int().positive(),
-    ramGB: z.number().int().positive(),
-    storageTB: z.number().positive()
+    ram: z.number().int().positive(),
+    storage: z.number().positive()
   }).optional(),
   ownerId: z.string().uuid().nullable().optional(),
   status: z.enum(['AVAILABLE', 'ALLOCATED', 'MAINTENANCE', 'RETIRED']).optional()
@@ -85,30 +87,6 @@ export default defineEventHandler(async (event) => {
 
     if (!owner) {
       throw createError({ statusCode: 404, message: 'Owner not found' })
-    }
-  }
-
-  // Check if we can downsize resources based on current allocation
-  if (result.data.spec) {
-    if (result.data.spec.cpu < existingHost.allocated.cpu) {
-      throw createError({
-        statusCode: 400,
-        message: `Cannot reduce CPU below allocated amount (${existingHost.allocated.cpu})`
-      })
-    }
-    
-    if (result.data.spec.ramGB < existingHost.allocated.ramGB) {
-      throw createError({
-        statusCode: 400,
-        message: `Cannot reduce RAM below allocated amount (${existingHost.allocated.ramGB} GB)`
-      })
-    }
-    
-    if (result.data.spec.storageTB < existingHost.allocated.storageTB) {
-      throw createError({
-        statusCode: 400,
-        message: `Cannot reduce storage below allocated amount (${existingHost.allocated.storageTB} TB)`
-      })
     }
   }
 

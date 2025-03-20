@@ -278,7 +278,7 @@
         body: form.value
       })
   
-      // $toast.success(`Plan ${isEditing.value ? 'updated' : 'created'} successfully`)
+      $toast.success(`Plan ${isEditing.value ? 'updated' : 'created'} successfully`)
       await fetchPlans()
       closeModal()
     } catch (error) {

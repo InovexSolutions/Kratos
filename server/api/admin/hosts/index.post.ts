@@ -1,13 +1,14 @@
 import { getServerSession } from '#auth'
 import { z } from 'zod'
 import { prisma } from '~/server/lib/prisma'
-import { calculateAvailableCapacity } from '~/server/utils/capacity-calculator'
+// import { calculateAvailableCapacity } from '~/server/utils/capacity-calculator'
 
 const hostSchema = z.object({
   hostname: z.string().min(3).max(100),
   dataCenterId: z.string().uuid(),
   type: z.enum(['GAME_SERVER', 'VPS', 'DEDICATED_SERVER']),
   spec: z.object({
+    ip: z.string().optional(),
     cpu: z.number().int().positive(),
     ramGB: z.number().int().positive(),
     storageTB: z.number().positive()
