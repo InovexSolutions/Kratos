@@ -21,9 +21,13 @@ const planSchema = z.object({
 export default defineEventHandler(async (event) => {
     const session = await getServerSession(event as any);
     if (!session) throw createError({ statusCode: 403 });
-    const user = session?.user;
-    const isAdmin = user?.role === 'admin';
 
+    const user = await prisma.user.findUnique({
+        where: { id: session.user.id }
+      });
+      
+    if (!user?.isAdmin) throw createError({ statusCode: 403, message: 'Admin access required' });
+    
     const { id } = event.context.params ?? {};
     if (!id) throw createError({ statusCode: 400, message: "Invalid plan ID" });
     const body = await readBody(event);

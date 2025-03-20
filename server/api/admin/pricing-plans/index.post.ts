@@ -19,8 +19,10 @@ const planSchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-    const user = event.context.user
-    if (!user?.isAdmin) throw createError({ statusCode: 403 })
+    const session = await getServerSession(event as any)
+    if (!session) throw createError({ statusCode: 403 })
+    const isAdmin = prisma.user.findFirst({ where: { id: session.user.id, isAdmin: true } })
+    if (!isAdmin) throw createError({ statusCode: 403 })
 
     const body = await readBody(event)
     const result = planSchema.safeParse(body)

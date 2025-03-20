@@ -6,11 +6,8 @@ export default defineEventHandler(async (event) => {
   const session = await getServerSession(event)
   if (!session?.user?.id) throw createError({ statusCode: 401 })
   
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id }
-  })
-  
-  if (!user?.isAdmin) throw createError({ statusCode: 403, message: 'Admin access required' })
+  const isAdmin = prisma.user.findFirst({ where: { id: session.user.id, isAdmin: true } })
+  if (!isAdmin) throw createError({ statusCode: 403 })
 
   // Get query params for filtering
   const query = getQuery(event)

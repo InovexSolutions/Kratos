@@ -17,6 +17,9 @@ export default defineEventHandler(async (event: any) => {
     throw createError({ status: 401, message: 'Unauthorized' })
   }
 
+  const isAdmin = prisma.user.findFirst({ where: { id: session.user.id, isAdmin: true } })
+  if (!isAdmin) throw createError({ statusCode: 403 })
+
   // Fetch the dataCenter with relations
   const dataCenter = await prisma.dataCenter.findUnique({
     where: {
