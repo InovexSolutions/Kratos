@@ -30,7 +30,7 @@ export default defineEventHandler(async (event) => {
       attributes: {
         id: user.id,
         email: user.email,
-        name: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email.split('@')[0],
+        name: user.name || user.email.split('@')[0],
         image: user.image,
         // Add any other fields needed by your interface
       }

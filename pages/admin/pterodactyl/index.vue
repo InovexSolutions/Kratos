@@ -90,7 +90,10 @@
               </div>
               <div>
                 <label class="block text-sm font-medium mb-1">Egg</label>
-                <select v-model="form.eggId" required class="p-2 border rounded w-full">
+                <select v-model="form.eggId" required class="p-2 border rounded w-full" :disabled="!form.nestId || eggs.length === 0">
+                  <option v-if="!form.nestId" value="" disabled>Select a nest first</option>
+                  <option v-else-if="eggs.length === 0" value="" disabled>Loading eggs...</option>
+                  <option v-else value="">Select an Egg</option>
                   <option v-for="egg in eggs" :key="egg.id" :value="egg.id">
                     {{ egg.name }} ({{ egg.docker_image }})
                   </option>
@@ -128,7 +131,7 @@
                     v-model.number="form.limits.cpu" 
                     required 
                     min="0"
-                    max="100" 
+                    max="6400" 
                     class="p-2 border rounded w-full"
                   >
                 </div>
@@ -150,8 +153,8 @@
                 <!-- In your template in the user dropdown -->
                 <select v-model="form.userId" required class="p-2 border rounded flex-grow">
                     <option value="">Select Owner</option>
-                    <option v-for="user in users" :key="user.attributes.id" :value="user.attributes.id">
-                    {{ user.attributes.name || user.attributes.email }}
+                    <option v-for="user in users" :key="user.id" :value="user.id">
+                    {{ user.name }} ({{ user.email }})
                     </option>
                 </select>
                 <button 
@@ -213,6 +216,7 @@
   const servers = ref([])
   const nests = ref([])
   const eggs = ref([])
+  const users = ref([])
   const loading = ref(true)
   const showModal = ref(false)
   const isEditing = ref(false)
@@ -251,9 +255,11 @@
     const fetchUsers = async () => {
       try {
         const response = await $fetch('/api/admin/users')
-        users.value = response.data // This now contains the properly formatted user data
+        users.value = response.data.map((user) => user.attributes)
+        console.log(users.value)
       } catch (error) {
         $toast.error('Failed to load users')
+        console.error(error)
       }
     }
 
@@ -276,7 +282,6 @@
   
   const openCreateModal = async () => {
     await fetchNests()
-    await fetchEggs()
     await fetchUsers()
     form.value = {
         name: '',
@@ -295,55 +300,82 @@
     showModal.value = true
   }
   
-  const openEditModal = async (server) => {
-    await fetchNests()
-    await fetchEggs()
-    await fetchUsers()
-    // Ensure limits exist in the form
-    const limits = server.limits || {
-      memory: 1024,
-      disk: 10240,
-      cpu: 100,
-      io: 500
+    const openEditModal = async (server) => {
+      await fetchNests()
+      await fetchUsers()
+    
+      // Ensure limits exist in the form
+      const limits = server.limits || {
+        memory: 1024,
+        disk: 10240,
+        cpu: 100,
+        io: 500
+      }
+
+      // Create a properly formatted form object
+      form.value = { 
+        id: server.id,
+        name: server.name,
+        description: server.description,
+        nestId: server.nest,  // This should be the nest ID
+        eggId: server.egg,    // This should be the egg ID
+        userId: server.user?.id || '',  // Get the user ID
+        limits: limits
+      }
+
+      // Fetch eggs for the selected nest
+      if (form.value.nestId) {
+        await fetchEggs(form.value.nestId)
+      }
+
+      isEditing.value = true
+      showModal.value = true
     }
-    form.value = { ...server }
-    isEditing.value = true
-    showModal.value = true
-  }
-  
-  const closeModal = () => {
-    showModal.value = false
-  }
   
     const submitForm = async () => {
         submitting.value = true
         try {
         const url = isEditing.value 
-          ? `/api/admin/pterodactyl-servers/${form.value.id}`
-          : '/api/admin/pterodactyl-servers'
-        
+            ? `/api/admin/pterodactyl-servers/${form.value.id}`
+            : '/api/admin/pterodactyl-servers'
+    
         const method = isEditing.value ? 'PUT' : 'POST'
-        
-        // Make sure limits are properly formatted
+
+        // Format the data to match what the API expects
         const requestData = {
-          ...form.value,
-          limits: {
-          memory: parseInt(form.value.limits.memory),
-          disk: parseInt(form.value.limits.disk),
-          cpu: parseInt(form.value.limits.cpu),
-          io: parseInt(form.value.limits.io)
-          }
+            name: form.value.name,
+            userId: form.value.userId,
+            eggId: form.value.eggId,
+            description: form.value.description,
+        
+            // Properly format resource limits
+            limits: {
+            memory: parseInt(form.value.limits?.memory) || 1024,
+            disk: parseInt(form.value.limits?.disk) || 10240,
+            cpu: parseInt(form.value.limits?.cpu) || 100,
+            io: parseInt(form.value.limits?.io) || 500,
+            swap: 0
+            },
+
+            // Add feature limits
+            feature_limits: {
+            databases: 5,
+            allocations: 5,
+            backups: 1
+            }
         }
     
-        await $fetch(url, {
-          method,
-          body: requestData // Use requestData instead of form.value
+        const response = await $fetch(url, {
+            method,
+            body: requestData
         })
     
+        console.log("Server API response:", response)
         $toast.success(`Server ${isEditing.value ? 'updated' : 'created'} successfully`)
         await fetchServers()
         closeModal()
         } catch (error) {
+        console.error("API error:", error)
         $toast.error(error.data?.message || 'An error occurred')
         } finally {
         submitting.value = false
@@ -371,24 +403,39 @@
     }
   }
   
-  const fetchServers = async () => {
-    try {
-      loading.value = true
-      const response = await $fetch('/api/admin/pterodactyl-servers')
-      servers.value = response.data.map((server) => {
+    const fetchServers = async () => {
+      try {
+        loading.value = true
+        const response = await $fetch('/api/admin/pterodactyl-servers')
+
+        // Map the response data to what the UI expects
+        servers.value = response.data.map((server) => {
           const attributes = server.attributes
-          // Extract user data if available
+        
+          // Extract user data if available in the relationships
           if (server.attributes?.relationships?.user?.data) {
-            attributes.user = server.attributes.relationships.user.data
+            attributes.user = server.attributes.relationships.user.data.attributes || 
+                              server.attributes.relationships.user.data
           }
-          return attributes
-      })
-    } catch (error) {
-      $toast.error('Failed to load servers')
-    } finally {
-      loading.value = false
+
+          return {
+            id: attributes.id,
+            name: attributes.name,
+            identifier: attributes.identifier,
+            description: attributes.description,
+            status: attributes.status || 'normal',
+            limits: attributes.limits || {},
+            user: attributes.user,
+            suspended: attributes.suspended
+          }
+        })
+      } catch (error) {
+        console.error("Error fetching servers:", error)
+        $toast.error('Failed to load servers')
+      } finally {
+        loading.value = false
+      }
     }
-  }
 
   const fetchNests = async () => {
     try {
@@ -396,17 +443,44 @@
       nests.value = response.data.map((nest) => nest.attributes)
     } catch (error) {
       $toast.error(`Failed to load nests error ${error}`)
+      console.error(error)
     }
   }
   
-  const fetchEggs = async () => {
-    try {
-      const response = await $fetch('/api/admin/pterodactyl-servers/eggs')
-      eggs.value = response.data.map((egg) => egg.attributes)
-    } catch (error) {
-      $toast.error('Failed to load eggs')
+    // Fix the fetchEggs function to accept the nestId parameter
+    const fetchEggs = async (nestId) => {
+      try {
+        eggs.value = [] // Clear eggs while loading
+        if (!nestId) {
+          return // Don't fetch if no nest selected
+        }
+
+        const response = await $fetch(`/api/admin/pterodactyl-servers/eggs?nestId=${nestId}`)
+        // Transform the nested structure if necessary
+        eggs.value = response.data.map(egg => ({
+          id: egg.attributes.id,
+          name: egg.attributes.name,
+          docker_image: egg.attributes.docker_image,
+          // Include other needed properties
+        }))
+      } catch (error) {
+        $toast.error('Failed to load eggs')
+        console.error(error)
+      }
     }
-  }
+
+    // Watch for changes to the selected nest
+    watch(() => form.value.nestId, async (newNestId) => {
+      // When nest changes, reset egg selection
+      form.value.eggId = ''
+    
+      // Fetch eggs for the selected nest
+      if (newNestId) {
+        await fetchEggs(newNestId)
+      } else {
+        eggs.value = [] // Clear eggs if no nest selected
+      }
+    })
   
   onMounted(() => {
     fetchServers()
