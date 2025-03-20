@@ -18,7 +18,8 @@ export default defineEventHandler(async (event) => {
       id: true,
       email: true,
       name: true,
-      image: true
+      image: true,
+      pteroUserId: true
     }
   });
 
@@ -32,6 +33,7 @@ export default defineEventHandler(async (event) => {
         email: user.email,
         name: user.name || user.email.split('@')[0],
         image: user.image,
+        pteroUserId: user.pteroUserId,
         // Add any other fields needed by your interface
       }
     }))
