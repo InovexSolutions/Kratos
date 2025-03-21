@@ -10,7 +10,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 
 export default NuxtAuthHandler({
     // A secret string you define, to ensure correct encryption
-      secret: process.env.SECRET!,
+      secret: process.env.SECRET,
     // secret: useRuntimeConfig().authSecret,
     // pages: {
         // signIn: '/api/auth/signIn',

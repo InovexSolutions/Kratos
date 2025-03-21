@@ -1,0 +1,27 @@
+services:
+  app:
+    build:
+      context: .
+      args:
+        - DATABASE_URL=${DATABASE_URL}
+    ports:
+      - "3000:3000"
+    env_file: ".env"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - PTERODACTYL_URL=${PTERODACTYL_URL}
+      - PTERODACTYL_API_KEY=${PTERODACTYL_API_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY}
+      - INVOICE_NINJA_TOKEN=${INVOICE_NINJA_TOKEN}
+      - INVOICE_WEBHOOK_SECRET=${INVOICE_WEBHOOK_SECRET}
+    restart: unless-stopped
+    # volumes:
+      # - ./:/app
+      # - /app/node_modules
+      # - /app/.nuxt
+      # - /app/.output

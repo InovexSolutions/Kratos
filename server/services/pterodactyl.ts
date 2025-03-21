@@ -9,7 +9,7 @@ export class PterodactylService {
     }
 
     async getServers() {
-        return $fetch(`${process.env.PTERODACTYL_URL}/api/application/servers`, {
+        return $fetch(`${this.config.public.pterodactylUrl}/api/application/servers`, {
             headers: this.headers
         })
     }
@@ -20,7 +20,7 @@ export class PterodactylService {
         if (getAllocations.length === 0) {
             throw new Error('No allocations available on the selected node.');
         }
-        const res = await $fetch(`${process.env.PTERODACTYL_URL}/api/application/servers`, {
+        const res = await $fetch(`${this.config.public.pterodactylUrl}/api/application/servers`, {
             method: 'POST',
             headers: this.headers,
             body: {
@@ -63,7 +63,7 @@ export class PterodactylService {
      * @returns Allocations
      */
     async getAllocations(nodeId: string) {
-        const response: { data: { attributes: Allocation }[] } = await $fetch(`${process.env.PTERODACTYL_URL}/api/application/nodes/${nodeId}/allocations`, {
+        const response: { data: { attributes: Allocation }[] } = await $fetch(`${this.config.public.pterodactylUrl}/api/application/nodes/${nodeId}/allocations`, {
             headers: this.headers
         })
         return response.data
@@ -82,7 +82,7 @@ export class PterodactylService {
         external_id?: string;
         description?: string;
     }) {
-        const res = $fetch(`${process.env.PTERODACTYL_URL}/api/application/servers/${id}/details`, {
+        const res = $fetch(`${this.config.public.pterodactylUrl}/api/application/servers/${id}/details`, {
             method: 'PATCH',
             headers: this.headers,
             body: {
@@ -115,7 +115,7 @@ export class PterodactylService {
             backups?: number;
         }
     }) {
-        return $fetch(`${process.env.PTERODACTYL_URL}/api/application/servers/${id}/build`, {
+        return $fetch(`${this.config.public.pterodactylUrl}/api/application/servers/${id}/build`, {
             method: 'PATCH',
             headers: this.headers,
             body: {
@@ -147,7 +147,7 @@ export class PterodactylService {
         image?: string;
         skip_scripts?: boolean;
     }) {
-        return $fetch(`${process.env.PTERODACTYL_URL}/api/application/servers/${id}/startup`, {
+        return $fetch(`${this.config.public.pterodactylUrl}/api/application/servers/${id}/startup`, {
             method: 'PATCH',
             headers: this.headers,
             body: {
@@ -209,21 +209,21 @@ export class PterodactylService {
     }
 
     async deleteServer(id: string) {
-        return $fetch(`${process.env.PTERODACTYL_URL}/api/application/servers/${id}`, {
+        return $fetch(`${this.config.public.pterodactylUrl}/api/application/servers/${id}`, {
             method: 'DELETE',
             headers: this.headers
         })
     }
 
     async getNests() {
-        return $fetch(`${process.env.PTERODACTYL_URL}/api/application/nests`, {
+        return $fetch(`${this.config.public.pterodactylUrl}/api/application/nests`, {
             headers: this.headers
         })
     }
 
     async getEggs(nestId: string | number | undefined) {
         const id = nestId ? parseInt(nestId as string) : 1;
-        return $fetch(`${process.env.PTERODACTYL_URL}/api/application/nests/${id}/eggs`, {
+        return $fetch(`${this.config.public.pterodactylUrl}/api/application/nests/${id}/eggs`, {
             headers: this.headers
         });
     }
@@ -233,7 +233,7 @@ export class PterodactylService {
      * @returns Nodes
      */
     async getNodes() {
-        return $fetch(`${process.env.PTERODACTYL_URL}/api/application/nodes`, {
+        return $fetch(`${this.config.public.pterodactylUrl}/api/application/nodes`, {
             headers: this.headers
         })
     }
@@ -243,7 +243,7 @@ export class PterodactylService {
      * @returns Users
      */
     async getUsers() {
-        return $fetch(`${process.env.PTERODACTYL_URL}/api/application/users`, {
+        return $fetch(`${this.config.public.pterodactylUrl}/api/application/users`, {
             headers: this.headers
         })
     }
