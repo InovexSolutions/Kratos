@@ -3,7 +3,8 @@
 <template>
     <div class="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
         <!-- Navbar -->
-        <NavBar class="sticky top-0 z-50" />
+        <!-- <NavBar class="sticky top-0 z-50" /> -->
+         <NavBar />
 
         <!-- Hero Section -->
         <section class="relative py-32 overflow-hidden">
@@ -78,6 +79,8 @@
 </template>
 
 <script setup>
+import NavBar from '~/components/shared/NavBar.vue';
+
 definePageMeta({
   auth: false
 });

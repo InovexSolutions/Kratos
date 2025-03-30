@@ -42,7 +42,7 @@ enum ServiceStatus {
 }
 
 model User {
-  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id               String   @id
   name             String
   email            String   @unique
   emailVerified    Boolean
@@ -51,10 +51,10 @@ model User {
   billingInfo      Json?
   // Integration IDs
   stripeCustomerId String?
-  pteroUserId      Int?     @map("pterodactyl_user_id")
+  pteroUserId      Int?
   // Timestamps
-  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt        DateTime @default(now()) @map("updated_at") @db.Timestamp(6)
+  createdAt        DateTime @default(now()) @db.Timestamp(6)
+  updatedAt        DateTime @default(now()) @db.Timestamp(6)
 
   // Updated relations
   services      Service[]
@@ -79,7 +79,7 @@ model DataCenter {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name      String   @unique
   location  String
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt DateTime @default(now())
 
   hosts Host[]
 
@@ -89,17 +89,17 @@ model DataCenter {
 model Host {
   id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   hostname     String         @unique
-  dataCenterId String         @map("data_center_id") @db.Uuid
+  dataCenterId String         @db.Uuid
   type         ServiceType
   spec         Json // { cpu: 128, ramGB: 512, storageTB: 100 }
   allocated    Json // { cpu: 32, ramGB: 128, storageTB: 50 }
   status       ResourceStatus @default(AVAILABLE)
-  createdAt    DateTime       @default(now()) @map("created_at")
+  createdAt    DateTime       @default(now())
 
   dataCenter DataCenter @relation(fields: [dataCenterId], references: [id])
   services   Service[]
   owner      User?      @relation("HostOwner", fields: [ownerId], references: [id])
-  ownerId    String?    @map("owner_id") @db.Uuid // For dedicated servers
+  ownerId    String?    // For dedicated servers
 
   @@map("hosts")
 }
@@ -107,14 +107,14 @@ model Host {
 model Service {
   id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   type            ServiceType
-  userId          String        @map("user_id") @db.Uuid
-  hostId          String?       @map("host_id") @db.Uuid
+  userId          String
+  hostId          String?       @db.Uuid
   status          ServiceStatus @default(PENDING)
   config          Json // Game: { game: 'minecraft', slots: 50 }, VPS: { os: 'ubuntu', cpu: 4 }
-  terminationDate DateTime?     @map("termination_date")
-  renewedAt       DateTime?     @map("renewed_at")
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @default(now()) @map("updated_at")
+  terminationDate DateTime?
+  renewedAt       DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @default(now())
 
   user         User                @relation(fields: [userId], references: [id])
   host         Host?               @relation(fields: [hostId], references: [id])
@@ -131,21 +131,21 @@ model Service {
 model ServiceDeployment {
   id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   service     Service   @relation(fields: [serviceId], references: [id])
-  serviceId   String    @map("service_id") @db.Uuid // Add @db.Uuid here to match Service.id type
+  serviceId   String    @db.Uuid // Add @db.Uuid here to match Service.id type
   status      String // PENDING, COMPLETED, FAILED
   logs        String[] // Array of log messages
   createdAt   DateTime  @default(now())
-  completedAt DateTime? @map("completed_at")
+  completedAt DateTime?
 
   @@map("service_deployments")
 }
 
 model PterodactylServer {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  serviceId String   @unique @map("service_id") @db.Uuid
-  nodeId    String   @map("node_id")
-  pteroId   Int      @map("ptero_id")
-  createdAt DateTime @default(now()) @map("created_at")
+  serviceId String   @unique @db.Uuid
+  nodeId    String
+  pteroId   Int
+  createdAt DateTime @default(now())
 
   service Service @relation(fields: [serviceId], references: [id])
 
@@ -154,11 +154,11 @@ model PterodactylServer {
 
 model PricingPlan {
   id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  serviceType    ServiceType @map("service_type")
+  serviceType    ServiceType
   name           String      @unique
-  description    String      @default("") @map("description") @db.Text
-  configTemplate Json        @map("config_template")
-  priceMonthly   Decimal     @map("price_monthly") @db.Decimal(10, 4)
+  description    String      @default("") @db.Text
+  configTemplate Json
+  priceMonthly   Decimal     @db.Decimal(10, 4)
   pricingModel   Json? // Add this new field
   specs          Json // { minCpu: 2, maxCpu: 8, baseStorage: 100 }
 
@@ -172,7 +172,7 @@ model PricingPlan {
 
 model NetworkConfig {
   id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  serviceId String  @unique @map("service_id") @db.Uuid
+  serviceId String  @unique @db.Uuid
   ipv4      String?
   ipv6      String?
   ports     Json? // { tcp: [25565, 27015], udp: [27015] }
@@ -190,15 +190,15 @@ model Order {
   totalAmount     Decimal     @db.Decimal(10, 2)
   stripeSessionId String?
   items           OrderItem[]
-  createdAt       DateTime    @default(now()) @map("created_at")
-  updatedAt       DateTime    @default(now()) @map("updated_at")
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @default(now())
 
   // Relations
-  userId       String        @map("user_id") @db.Uuid
+  userId       String
   user         User          @relation(fields: [userId], references: [id])
-  serviceId    String?       @map("service_id") @db.Uuid
+  serviceId    String?       @db.Uuid
   service      Service?      @relation(fields: [serviceId], references: [id])
-  planId       String?       @map("plan_id") @db.Uuid
+  planId       String?       @db.Uuid
   plan         PricingPlan?  @relation(fields: [planId], references: [id])
   invoices     Invoice[]
   subscription Subscription?
@@ -231,20 +231,20 @@ model Invoice {
   subtotal              Decimal?      @db.Decimal(10, 2)
   tax                   Decimal?      @db.Decimal(10, 2)
   status                InvoiceStatus @default(PENDING)
-  periodStart           DateTime?     @map("period_start") @db.Timestamp(6)
-  periodEnd             DateTime?     @map("period_end") @db.Timestamp(6)
-  paidAt                DateTime?     @map("paid_at") @db.Timestamp(6)
-  stripeInvoiceId       String?       @unique @map("stripe_invoice_id")
-  stripePaymentIntentId String?       @unique @map("stripe_payment_intent_id")
-  createdAt             DateTime      @default(now()) @map("created_at")
-  updatedAt             DateTime      @default(now()) @map("updated_at")
+  periodStart           DateTime?     @db.Timestamp(6)
+  periodEnd             DateTime?     @db.Timestamp(6)
+  paidAt                DateTime?     @db.Timestamp(6)
+  stripeInvoiceId       String?       @unique
+  stripePaymentIntentId String?       @unique
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @default(now())
 
   // Relations
-  orderId   String   @map("order_id") @db.Uuid
+  orderId   String   @db.Uuid
   order     Order    @relation(fields: [orderId], references: [id])
-  userId    String   @map("user_id") @db.Uuid
+  userId    String
   user      User     @relation(fields: [userId], references: [id])
-  serviceId String?  @map("service_id") @db.Uuid
+  serviceId String?  @db.Uuid
   service   Service? @relation(fields: [serviceId], references: [id])
 
   @@index([orderId])
@@ -256,21 +256,21 @@ model Invoice {
 
 model Subscription {
   id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  stripeSubscriptionId String    @unique @map("stripe_subscription_id") @db.VarChar(255)
+  stripeSubscriptionId String    @unique @db.VarChar(255)
   status               SubStatus @default(active)
-  currentPeriodStart   DateTime  @map("current_period_start") @db.Timestamp(6)
-  currentPeriodEnd     DateTime  @map("current_period_end") @db.Timestamp(6)
-  canceledAt           DateTime? @map("canceled_at") @db.Timestamp(6)
-  cancelAtPeriodEnd    Boolean   @default(false) @map("cancel_at_period_end")
-  createdAt            DateTime  @default(now()) @map("created_at")
-  updatedAt            DateTime  @default(now()) @map("updated_at")
+  currentPeriodStart   DateTime  @db.Timestamp(6)
+  currentPeriodEnd     DateTime  @db.Timestamp(6)
+  canceledAt           DateTime? @db.Timestamp(6)
+  cancelAtPeriodEnd    Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @default(now())
 
   // Relations
-  orderId   String  @map("order_id") @db.Uuid
+  orderId   String  @db.Uuid
   order     Order   @relation(fields: [orderId], references: [id])
-  userId    String  @map("user_id") @db.Uuid
+  userId    String
   user      User    @relation(fields: [userId], references: [id])
-  serviceId String  @map("service_id") @db.Uuid
+  serviceId String  @db.Uuid
   service   Service @relation(fields: [serviceId], references: [id])
 
   @@unique([orderId])
@@ -282,7 +282,7 @@ model Subscription {
 model Cart {
   id        String     @id @default(dbgenerated("gen_random_uuid()"))
   user      User       @relation(fields: [userId], references: [id])
-  userId    String     @unique @db.Uuid
+  userId    String     @unique
   items     CartItem[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @default(now())
