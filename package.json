@@ -20,14 +20,29 @@
     "@nuxt/test-utils": "3.17.2",
     "@nuxt/ui": "3.0.2",
     "@prisma/nuxt": "^0.3.0",
-    "@types/node": "^22.13.14",
     "@unhead/vue": "^2.0.0-rc.8",
     "better-auth": "^1.2.5",
     "eslint": "^9.0.0",
+    "force": "^0.0.3",
     "nuxt": "^3.16.1",
     "stripe": "^17.7.0",
-    "typescript": "^5.6.3",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"
-  }
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.14",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2"
+  },
+  "trustedDependencies": [
+    "@parcel/watcher",
+    "@prisma/client",
+    "better-sqlite3",
+    "esbuild",
+    "sharp",
+    "vue-demi"
+  ]
 }

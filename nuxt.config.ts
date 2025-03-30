@@ -20,15 +20,20 @@ export default defineNuxtConfig({
   runtimeConfig: {
     pterodactylApiKey: process.env.NUXT_PTERODACTYL_API_KEY || '',
     public: {
-      invoiceNinjaKey: process.env.NUXT_PUBLIC_INVOICE_NINJA_TOKEN,
       pterodactylUrl: process.env.NUXT_PUBLIC_PTERODACTYL_URL || '',
       pterodactylClientApiKey: process.env.NUXT_PUBLIC_PTERODACTYL_API_KEY || '',
       stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY || ''
     }
   },
-
   prisma: {
     skipPrompts: true,
     formatSchema: true,
   },
+  components: [
+    {
+      path: '~/components',
+      pathPrefix: false,
+    },
+    '~/components/landing',
+  ],
 })

@@ -88,12 +88,12 @@
                   <Icon name="mdi:account-cog" class="mr-2" />
                   Settings
                 </NuxtLink>
-                <Button 
+                <button 
                   class="block w-full text-left px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white" 
                   @click="authClient.signOut()"
                 >
                   Logout
-                </Button>
+                </button>
                 <a 
                   href="/api/auth/signout" 
                   class="block px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white">

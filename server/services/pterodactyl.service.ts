@@ -321,7 +321,7 @@ export class PterodactylService {
         // Use config value if provided, otherwise use egg default
         const configValue = config[envVar as keyof ServerCreateParams];
         const defaultValue = attr.default_value;
-        
+
         if (configValue !== undefined) {
           environment[envVar] = configValue as string | number | boolean;
         } else if (typeof defaultValue === 'object' && defaultValue !== null && 'default' in defaultValue) {
@@ -448,5 +448,15 @@ export class PterodactylService {
     return response.data
       .map((allocation: { attributes: Allocation }) => allocation.attributes)
       .filter((allocation: Allocation) => !allocation.assigned);
+  }
+
+  /**
+     * Get Locations
+     * @returns Locations list
+     */
+  async getLocations() {
+    return $fetch(`${this.config.host}/api/application/locations?include=nodes`, {
+      headers: this.headers
+    })
   }
 }

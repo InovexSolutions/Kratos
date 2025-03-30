@@ -79,6 +79,7 @@
 </template>
 
 <script setup>
+import GameCard from '~/components/landing/GameCard.vue';
 import NavBar from '~/components/shared/NavBar.vue';
 
 definePageMeta({
