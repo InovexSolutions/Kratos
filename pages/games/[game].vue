@@ -173,7 +173,7 @@
 <script setup>
 const route = useRoute();
 const router = useRouter();
-const { $toast } = useNuxtApp();
+const toast = useToast(); // Replace $toast with useToast()
 
 // State variables
 const loading = ref(true);
@@ -190,14 +190,18 @@ const loadingLocations = ref(true);
 // Load locations
 const fetchLocations = async () => {
   try {
-    
     loadingLocations.value = true;
     const locationsData = await $fetch('/api/pterodactyl/locations');
     locations.value = locationsData;
     console.log(locationsData);
   } catch (error) {
     console.error('Error fetching locations:', error);
-    $toast.error('Failed to load server locations');
+    toast.add({
+      title: 'Location Error',
+      description: 'Failed to load server locations',
+      color: 'error',
+      icon: 'i-heroicons-exclamation-circle'
+    });
   } finally {
     loadingLocations.value = false;
   }
@@ -231,12 +235,16 @@ const getGameData = async () => {
     loading.value = false;
   } catch (error) {
     console.error('Error fetching game data:', error);
-    $toast.error('Failed to load game data');
+    toast.add({
+      title: 'Data Load Error',
+      description: 'Failed to load game data',
+      color: 'error',
+      icon: 'i-heroicons-exclamation-circle'
+    });
   }
 };
 
 // Update the initializeConfig function
-
 const initializeConfig = () => {
   // Create default configuration based on pricing model
   const config = {};
@@ -403,11 +411,24 @@ const addToCart = async () => {
       }
     });
     
-    $toast.success('Added to cart successfully');
+    toast.add({
+      title: 'Added to Cart',
+      description: 'Server configuration has been added to your cart',
+      color: 'success',
+      icon: 'i-heroicons-shopping-cart',
+      timeout: 5000
+    });
+    
     router.push('/checkout');
   } catch (error) {
     console.error('Error adding to cart:', error);
-    $toast.error('Failed to add to cart');
+    toast.add({
+      title: 'Cart Error',
+      description: 'Failed to add item to cart',
+      color: 'error',
+      icon: 'i-heroicons-exclamation-circle',
+      timeout: 5000
+    });
   } finally {
     isAddingToCart.value = false;
   }

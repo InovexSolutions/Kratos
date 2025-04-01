@@ -362,7 +362,8 @@ definePageMeta({
 });
 
 const route = useRoute();
-const { $toast, $stripe } = useNuxtApp();
+const toast = useToast(); // Replace $toast with useToast()
+const { $stripe } = useNuxtApp();
 
 const loading = ref(true);
 const error = ref(null);
@@ -458,75 +459,153 @@ const invoiceStatusColor = (status) => {
 // Server controls
 const restartServer = async () => {
   try {
-    $toast.info('Restarting server...');
+    toast.add({
+      title: 'Restarting Server',
+      description: 'Server restart has been initiated...',
+      color: 'info',
+      icon: 'i-heroicons-arrow-path',
+      timeout: 3000
+    });
+    
     await $fetch(`/api/server/${order.value.serviceId}/restart`, {
       method: 'POST'
     });
-    $toast.success('Server restart initiated');
+    
+    toast.add({
+      title: 'Server Restarted',
+      description: 'Server restart has been initiated successfully',
+      color: 'success',
+      icon: 'i-heroicons-check-circle',
+      timeout: 5000
+    });
   } catch (error) {
-    $toast.error('Failed to restart server');
+    toast.add({
+      title: 'Restart Failed',
+      description: 'Failed to restart the server. Please try again.',
+      color: 'error',
+      icon: 'i-heroicons-exclamation-circle',
+      timeout: 5000
+    });
     console.error(error);
   }
 };
 
 const openBackupModal = () => {
-  $toast.info('Backup feature coming soon');
+  toast.add({
+    title: 'Coming Soon',
+    description: 'Backup feature will be available soon',
+    color: 'info',
+    icon: 'i-heroicons-information-circle'
+  });
 };
 
 const openStatsModal = () => {
-  $toast.info('Statistics feature coming soon');
+  toast.add({
+    title: 'Coming Soon',
+    description: 'Statistics feature will be available soon',
+    color: 'info',
+    icon: 'i-heroicons-information-circle'
+  });
 };
 
 const openConfigEditor = () => {
-  $toast.info('Configuration editor coming soon');
+  toast.add({
+    title: 'Coming Soon',
+    description: 'Configuration editor will be available soon',
+    color: 'info',
+    icon: 'i-heroicons-information-circle'
+  });
 };
 
 // Payment methods
 const refreshPaymentStatus = async () => {
-  $toast.info('Refreshing payment status...');
+  toast.add({
+    title: 'Refreshing Status',
+    description: 'Updating payment status information...',
+    color: 'info',
+    icon: 'i-heroicons-arrow-path'
+  });
+  
   await fetchOrder();
-  $toast.success('Payment status updated');
+  
+  toast.add({
+    title: 'Status Updated',
+    description: 'Payment status has been refreshed',
+    color: 'success',
+    icon: 'i-heroicons-check-circle'
+  });
 };
 
 const payInvoice = async (invoice) => {
   try {
-    $toast.info('Processing payment...')
+    toast.add({
+      title: 'Processing Payment',
+      description: 'Please wait while we process your payment...',
+      color: 'info',
+      icon: 'i-heroicons-credit-card'
+    });
     
     const response = await $fetch(`/api/invoices/${invoice.id}/retry-payment`, {
       method: 'POST'
-    })
+    });
     
     if (response.success) {
-      $toast.success('Payment processed successfully')
-      await fetchOrder() // Refresh order data
+      toast.add({
+        title: 'Payment Successful',
+        description: 'Your payment has been processed successfully',
+        color: 'success',
+        icon: 'i-heroicons-check-circle'
+      });
+      await fetchOrder(); // Refresh order data
     } else {
       // If not immediately successful, show info about processing
-      $toast.info(response.message || 'Payment is being processed')
+      toast.add({
+        title: 'Payment Processing',
+        description: response.message || 'Your payment is being processed',
+        color: 'info',
+        icon: 'i-heroicons-clock'
+      });
       
       // Check again after a delay
       setTimeout(async () => {
-        await fetchOrder()
-      }, 5000)
+        await fetchOrder();
+      }, 5000);
     }
   } catch (error) {
-    console.error('Error processing invoice payment:', error)
+    console.error('Error processing invoice payment:', error);
     
     // Check if it's a payment method issue
     if (error.data?.message?.includes('payment_method')) {
-      $toast.error('Invalid payment method. Please update your payment details.')
-      openPaymentMethodModal() // Open modal to update payment method
+      toast.add({
+        title: 'Payment Method Invalid',
+        description: 'Please update your payment details',
+        color: 'error',
+        icon: 'i-heroicons-credit-card'
+      });
+      openPaymentMethodModal(); // Open modal to update payment method
     } else {
-      $toast.error('Payment failed: ' + (error.data?.message || 'Unknown error'))
+      toast.add({
+        title: 'Payment Failed',
+        description: error.data?.message || 'Unknown error occurred',
+        color: 'error',
+        icon: 'i-heroicons-exclamation-circle'
+      });
     }
   }
-}
+};
 
 // Subscription management
 const toggleAutoRenew = async () => {
   autoRenew.value = !autoRenew.value;
   
   try {
-    $toast.info(`Auto-renewal ${autoRenew.value ? 'enabled' : 'disabled'}`);
+    toast.add({
+      title: 'Auto-Renewal Updated',
+      description: `Auto-renewal is now ${autoRenew.value ? 'enabled' : 'disabled'}`,
+      color: 'info',
+      icon: 'i-heroicons-clock'
+    });
+    
     await $fetch(`/api/order/${order.value.id}/auto-renew`, {
       method: 'POST',
       body: {
@@ -536,29 +615,59 @@ const toggleAutoRenew = async () => {
   } catch (error) {
     // Revert UI state if API call fails
     autoRenew.value = !autoRenew.value;
-    $toast.error('Failed to update auto-renewal settings');
+    
+    toast.add({
+      title: 'Update Failed',
+      description: 'Failed to update auto-renewal settings',
+      color: 'error',
+      icon: 'i-heroicons-exclamation-circle'
+    });
     console.error(error);
   }
 };
 
 const cancelSubscription = async () => {
   try {
-    $toast.info('Processing cancellation...');
+    toast.add({
+      title: 'Processing Cancellation',
+      description: 'Please wait while we process your request...',
+      color: 'info',
+      icon: 'i-heroicons-clock'
+    });
+    
     await $fetch(`/api/order/${order.value.id}/cancel`, {
       method: 'POST'
     });
+    
     showCancelModal.value = false;
     await fetchOrder();
-    $toast.success('Subscription cancelled successfully');
+    
+    toast.add({
+      title: 'Subscription Cancelled',
+      description: 'Your subscription has been cancelled successfully',
+      color: 'success',
+      icon: 'i-heroicons-check-circle'
+    });
   } catch (error) {
-    $toast.error('Failed to cancel subscription');
+    toast.add({
+      title: 'Cancellation Failed',
+      description: 'Failed to cancel your subscription',
+      color: 'error',
+      icon: 'i-heroicons-exclamation-circle'
+    });
     console.error(error);
   }
 };
 
 const retryPayment = async () => {
   try {
-    $toast.info('Retrying payment...');
+    toast.add({
+      title: 'Retrying Payment',
+      description: 'Initiating payment process...',
+      color: 'info',
+      icon: 'i-heroicons-credit-card'
+    });
+    
     const { url } = await $fetch(`/api/order/${order.value.id}/retry-payment`, {
       method: 'POST'
     });
@@ -569,23 +678,47 @@ const retryPayment = async () => {
       throw new Error('No payment URL received');
     }
   } catch (error) {
-    $toast.error('Failed to retry payment');
+    toast.add({
+      title: 'Payment Failed',
+      description: 'Failed to retry payment. Please try again.',
+      color: 'error',
+      icon: 'i-heroicons-exclamation-circle'
+    });
     console.error(error);
   }
 };
 
 const deleteServer = async () => {
   try {
-    $toast.info('Deleting server...');
+    toast.add({
+      title: 'Deleting Server',
+      description: 'Please wait while we process your request...',
+      color: 'info',
+      icon: 'i-heroicons-trash'
+    });
+    
     await $fetch(`/api/order/${order.value.id}`, {
       method: 'DELETE'
     });
+    
     showDeleteModal.value = false;
-    $toast.success('Server deleted successfully');
+    
+    toast.add({
+      title: 'Server Deleted',
+      description: 'Your server has been deleted successfully',
+      color: 'success',
+      icon: 'i-heroicons-check-circle'
+    });
+    
     // Redirect to orders page
     navigateTo('/dashboard/orders');
   } catch (error) {
-    $toast.error('Failed to delete server');
+    toast.add({
+      title: 'Deletion Failed',
+      description: 'Failed to delete your server',
+      color: 'error',
+      icon: 'i-heroicons-exclamation-circle'
+    });
     console.error(error);
   }
 };
@@ -610,7 +743,12 @@ const openPaymentMethodModal = async () => {
     
   } catch (error) {
     console.error('Error setting up payment method update:', error);
-    $toast.error('Failed to initialize payment update');
+    toast.add({
+      title: 'Payment Setup Failed',
+      description: 'Failed to initialize payment update',
+      color: 'error',
+      icon: 'i-heroicons-exclamation-circle'
+    });
   }
 };
 
@@ -648,16 +786,24 @@ const initializeStripeElements = async (clientSecret) => {
     }
   } catch (error) {
     console.error('Failed to initialize Stripe Elements:', error);
-    $toast.error('Failed to load payment form');
+    toast.add({
+      title: 'Form Load Failed',
+      description: 'Failed to load payment form',
+      color: 'error',
+      icon: 'i-heroicons-exclamation-circle'
+    });
     showPaymentMethodModal.value = false;
   }
 };
 
-// Update the updatePaymentMethod function
-
 const updatePaymentMethod = async () => {
   if (!stripeElements.value) {
-    $toast.error('Payment form not initialized');
+    toast.add({
+      title: 'Form Not Ready',
+      description: 'Payment form not initialized',
+      color: 'error',
+      icon: 'i-heroicons-exclamation-circle'
+    });
     return;
   }
   
@@ -686,30 +832,55 @@ const updatePaymentMethod = async () => {
         }
       });
       
-      $toast.success('Payment method updated successfully');
+      toast.add({
+        title: 'Payment Method Updated',
+        description: 'Your payment method has been updated successfully',
+        color: 'success',
+        icon: 'i-heroicons-check-circle'
+      });
       showPaymentMethodModal.value = false;
       await fetchOrder(); // Refresh order data
     } else if (setupIntent?.status === 'requires_action') {
       // Handle additional authentication steps if needed
-      $toast.info('Additional authentication required');
+      toast.add({
+        title: 'Authentication Required',
+        description: 'Additional authentication is needed',
+        color: 'info',
+        icon: 'i-heroicons-shield-check'
+      });
       // The user will be redirected automatically by Stripe
     } else {
       throw new Error('Unexpected payment setup status');
     }
   } catch (error) {
     console.error('Error updating payment method:', error);
-    $toast.error(error.message || 'Failed to update payment method');
+    toast.add({
+      title: 'Update Failed',
+      description: error.message || 'Failed to update payment method',
+      color: 'error',
+      icon: 'i-heroicons-exclamation-circle'
+    });
   } finally {
     updatingPayment.value = false;
   }
 };
 
 const openPauseModal = () => {
-  $toast.info('Pause feature coming soon');
+  toast.add({
+    title: 'Coming Soon',
+    description: 'Pause feature will be available soon',
+    color: 'info',
+    icon: 'i-heroicons-information-circle'
+  });
 };
 
 const openUpgradeModal = () => {
-  $toast.info('Upgrade feature coming soon');
+  toast.add({
+    title: 'Coming Soon',
+    description: 'Upgrade feature will be available soon',
+    color: 'info',
+    icon: 'i-heroicons-information-circle'
+  });
 };
 
 // Add these helper methods to your script section
@@ -757,7 +928,12 @@ const formatDateRelative = (dateString) => {
 // Function to handle invoice download
 const downloadInvoice = async (invoice) => {
   try {
-    $toast.info('Preparing invoice download...');
+    toast.add({
+      title: 'Preparing Download',
+      description: 'Getting your invoice ready...',
+      color: 'info',
+      icon: 'i-heroicons-document-arrow-down'
+    });
     
     // Implement actual download logic here
     // For example:
@@ -771,7 +947,12 @@ const downloadInvoice = async (invoice) => {
     }
   } catch (error) {
     console.error('Failed to download invoice:', error);
-    $toast.error('Could not download invoice');
+    toast.add({
+      title: 'Download Failed',
+      description: 'Could not download invoice',
+      color: 'error',
+      icon: 'i-heroicons-exclamation-circle'
+    });
   }
 };
 
@@ -779,7 +960,9 @@ const downloadInvoice = async (invoice) => {
 onMounted(fetchOrder);
 </script>
 
-<style scoped>
+<style>
+@reference "~/assets/css/main.css";
+
 .control-btn {
   @apply p-3 rounded-lg flex items-center justify-center gap-2 
          transition-all duration-200 border border-transparent
@@ -812,7 +995,6 @@ onMounted(fetchOrder);
   right: 0;
   z-index: 1;
   border-color: #68D391;
-  top: -0.25rem;
 }
 .toggle-label {
   @apply block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer;

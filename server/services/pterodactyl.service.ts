@@ -21,7 +21,7 @@ export class PterodactylService {
     const serverDetails = await this.createPterodactylServer(pterodactylUserId, config)
     // console.log('[Pterodactyl] Nuxt User ID:', user_uid)
 
-    return prisma.service.create({
+    const service = await prisma.service.create({
       data: {
         type: 'GAME_SERVER',
         userId: user.id,
@@ -34,6 +34,19 @@ export class PterodactylService {
         }
       }
     });
+
+    console.log('[Pterodactyl] Service created:', service)
+
+    const pteroServer = prisma.pterodactylServer.create({
+      data: {
+        serviceId: service.id,
+        nodeId: serverDetails.nodeId,
+        pteroId: serverDetails.id
+      }
+    });
+    console.log('[Pterodactyl] Pterodactyl db server created:', pteroServer)
+
+    return service
   }
 
   private async findOrCreateUser(user: User): Promise<string> {
@@ -243,6 +256,7 @@ export class PterodactylService {
       return {
         id: server_id,
         identifier: identifier,
+        nodeId: nodeId,
         // status: server.data.attributes.status,
         // allocation: server.data.attributes.allocations[0]
       }
@@ -295,7 +309,10 @@ export class PterodactylService {
   }
 
   private generateUsername(email: string): string {
-    return email.split('@')[0].replace(/[^\w]/g, '').slice(0, 15)
+    // Extract the username part from the email address + hash the full email compress it to 8 characters and add it as a suffix
+    const username = email.split('@')[0]
+    const hash = this.generatePassword(6)
+    return `${username}-${hash}`
   }
 
   private generatePassword(length = 16): string {

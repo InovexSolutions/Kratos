@@ -96,7 +96,7 @@ CREATE TABLE "service_deployments" (
 CREATE TABLE "pterodactyl_servers" (
     "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "serviceId" UUID NOT NULL,
-    "nodeId" TEXT NOT NULL,
+    "nodeId" INTEGER NOT NULL,
     "pteroId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 

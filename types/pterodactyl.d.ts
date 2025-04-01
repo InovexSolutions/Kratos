@@ -47,11 +47,12 @@ declare interface PterodactylServer {
     id: number
     identifier: string,
     name?: string,
-    status?: string
+    status?: string,
     allocation?: {
         ip: string
         port: number
-    }
+    },
+    nodeId?: number
 }
 
 // types/pterodactyl.d.ts
