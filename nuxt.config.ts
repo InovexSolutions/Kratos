@@ -42,4 +42,7 @@ export default defineNuxtConfig({
     },
     '~/components/landing',
   ],
+  routeRules: {
+    '/dashboard/orders/**': { ssr: false },
+  },
 })

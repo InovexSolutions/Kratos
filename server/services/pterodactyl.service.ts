@@ -21,21 +21,43 @@ export class PterodactylService {
     const serverDetails = await this.createPterodactylServer(pterodactylUserId, config)
     // console.log('[Pterodactyl] Nuxt User ID:', user_uid)
 
-    const service = await prisma.service.create({
-      data: {
+    const existingService = await prisma.service.findFirst({
+      where: { 
         type: 'GAME_SERVER',
         userId: user.id,
+        status: 'PENDING',
+      }
+    });
+    
+    if (!existingService) {
+      throw new Error('Service not found');
+    }
+    
+    const service = await prisma.service.update({
+      where: { id: existingService.id },
+      data: {
+        status: 'ACTIVE',
         config: {
           memory: config.memory,
           cpu: config.cpu,
           disk: config.disk,
           pterodactylServerId: serverDetails.id.toString(),
           egg: config.egg,
+        },
+        orders: {
+          updateMany: {
+            where: {},  // Update related order
+            data: { status: 'ACTIVE' }
+          }
         }
       }
     });
 
     console.log('[Pterodactyl] Service created:', service)
+
+    if (!serverDetails.nodeId) {
+      throw new Error('Server creation failed: Node ID is undefined');
+    }
 
     const pteroServer = prisma.pterodactylServer.create({
       data: {
@@ -44,7 +66,7 @@ export class PterodactylService {
         pteroId: serverDetails.id
       }
     });
-    console.log('[Pterodactyl] Pterodactyl db server created:', pteroServer)
+    console.log('[Pterodactyl] Pterodactyl db server updated:', pteroServer)
 
     return service
   }
