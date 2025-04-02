@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
-    <NavBar class="sticky top-0 z-50" />
+    <NavBar />
 
     <div class="container mx-auto px-4 py-12">
       <!-- Dashboard Header -->
@@ -97,9 +97,6 @@
 </template>
 
 <script setup>
-const { $api } = useNuxtApp();
-const authStore = useAuthStore();
-
 const servers = ref([]);
 const showCreateServerModal = ref(false);
 const activeServers = ref(0);
@@ -107,11 +104,7 @@ const cpuUsage = ref(15);
 
 // Sample data - replace with your API call
 onMounted(async () => {
-  const userServers = await $fetch('/api/pterodactyl/user_servers', {
-    headers: {
-      Authorization: `Bearer ${authStore.token}`
-    }
-  });
+  const userServers = await $fetch('/api/pterodactyl/user_servers');
   // Format some data
   servers.value = userServers.map(server => ({
     id: server.id,

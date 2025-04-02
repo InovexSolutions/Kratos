@@ -3,7 +3,8 @@
 <template>
     <div class="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800">
         <!-- Navbar -->
-        <NavBar class="sticky top-0 z-50" />
+        <!-- <NavBar class="sticky top-0 z-50" /> -->
+         <NavBar />
 
         <!-- Hero Section -->
         <section class="relative py-32 overflow-hidden">
@@ -17,8 +18,9 @@
                         Blazing-fast game servers with 99.9% uptime and instant setup
                     </p>
                     <div class="animate-fade-in-up delay-200">
-                        <button @click="scrollToGames"
-                            class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-4 rounded-xl text-lg font-semibold transform hover:scale-105 transition-all duration-300 shadow-lg shadow-blue-500/20">
+                        <button
+                            class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-4 rounded-xl text-lg font-semibold transform hover:scale-105 transition-all duration-300 shadow-lg shadow-blue-500/20"
+                            @click="scrollToGames">
                             Start Your Server Now →
                         </button>
                     </div>
@@ -44,7 +46,7 @@
 
         <!-- Featured Games Grid -->
         <section class="py-20 bg-gray-800/50">
-            <div class="container mx-auto px-4" id="games">
+            <div id="games" class="container mx-auto px-4">
                 <h2 class="text-4xl font-bold mb-16 text-center text-white">
                     Choose Your <span
                         class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Battlefield</span>
@@ -64,8 +66,9 @@
                 <p class="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
                     Join thousands of gamers already experiencing lag-free gameplay and instant server setup.
                 </p>
-                <button @click="scrollToGames"
-                    class="bg-white text-blue-600 px-8 py-4 rounded-xl text-lg font-bold transform hover:scale-105 transition-all duration-300 shadow-lg">
+                <button
+                    class="bg-white text-blue-600 px-8 py-4 rounded-xl text-lg font-bold transform hover:scale-105 transition-all duration-300 shadow-lg"
+                    @click="scrollToGames">
                     Get Started in 60 Seconds
                 </button>
             </div>
@@ -76,6 +79,9 @@
 </template>
 
 <script setup>
+import GameCard from '~/components/landing/GameCard.vue';
+import NavBar from '~/components/shared/NavBar.vue';
+
 definePageMeta({
   auth: false
 });

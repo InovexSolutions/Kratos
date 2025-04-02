@@ -49,10 +49,16 @@
             </template>
   
             <!-- User Dropdown -->
-            <div v-else class="relative" @mouseenter="isDropdownOpen = true" @mouseleave="isDropdownOpen = false">
-              <button class="flex items-center space-x-2">
-                <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 flex items-center justify-center">
-                  <span class="text-white text-sm font-bold">
+            <div v-else class="relative">
+              <button 
+                class="flex items-center space-x-2"
+                @mouseenter="showDropdown"
+                @mouseleave="hideDropdown"
+                @click="isDropdownOpen = !isDropdownOpen"
+              >
+                <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-400 to-purple-500 flex items-center justify-center overflow-hidden">
+                  <img v-if="image" :src="image" alt="User avatar" class="w-full h-full object-cover" >
+                  <span v-else class="text-white text-sm font-bold">
                     {{ email[0].toUpperCase() || 'U' }}
                   </span>
                 </div>
@@ -63,7 +69,8 @@
               <div 
                 v-show="isDropdownOpen"
                 class="absolute right-0 top-full mt-1 w-48 bg-gray-900 border border-gray-800 rounded-lg shadow-lg transition-all duration-200 origin-top"
-                :class="isDropdownOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'"
+                @mouseenter="showDropdown"
+                @mouseleave="hideDropdown"
               >
                 <NuxtLink 
                   to="/dashboard" 
@@ -81,22 +88,23 @@
                   <Icon name="mdi:account-cog" class="mr-2" />
                   Settings
                 </NuxtLink>
+                <button 
+                  class="block w-full text-left px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white" 
+                  @click="authClient.signOut()"
+                >
+                  Logout
+                </button>
                 <a 
                   href="/api/auth/signout" 
-                  class="block px-4 py-2 text-gray-300 hover:bg-gray-800 hover:text-white">
+                  class="block px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white">
                   Logout
                 </a>
-                <!-- <button  -->
-                  <!-- @click="auth.logout()"  -->
-                  <!-- class="w-full text-left px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white"> -->
-                  <!-- Logout -->
-                <!-- </button> -->
               </div>
             </div>
           </div>
   
           <!-- Mobile Menu Button -->
-          <button @click="isMobileMenuOpen = !isMobileMenuOpen" class="md:hidden text-gray-400 hover:text-white">
+          <button class="md:hidden text-gray-400 hover:text-white" @click="isMobileMenuOpen = !isMobileMenuOpen">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
@@ -175,29 +183,44 @@
     </nav>
   </template>
 
-  <script setup>
-  const { data } = useAuth()
-  const user = data?.value?.user
-  const email = user?.email || "missigno"
-  const image = user?.image || ''
-  const auth = useAuthStore()
-  const isMobileMenuOpen = ref(false)
-  const isDropdownOpen = ref(false)
-  
-  const scrollToGames = () => {
-    const gamesSection = document.querySelector('#games')
-    if (gamesSection) {
-      gamesSection.scrollIntoView({ behavior: 'smooth' })
-    }
+<script setup>
+import { useSession, authClient } from "~/lib/auth-client";
+
+const { data: session } = await useSession(useFetch);
+
+const user = computed(() => session.value?.user || null);
+const email = computed(() => user.value?.email || "missigno");
+const image = computed(() => user.value?.image || '');
+
+const isMobileMenuOpen = ref(false);
+const isDropdownOpen = ref(false);
+let dropdownTimer = null;
+
+const scrollToGames = () => {
+  const gamesSection = document.querySelector('#games');
+  if (gamesSection) {
+    gamesSection.scrollIntoView({ behavior: 'smooth' });
   }
-  </script>
+}
+
+const showDropdown = () => {
+  clearTimeout(dropdownTimer);
+  isDropdownOpen.value = true;
+}
+
+const hideDropdown = () => {
+  dropdownTimer = setTimeout(() => {
+    isDropdownOpen.value = false;
+  }, 150); // 150ms delay gives time to move to the dropdown
+}
+</script>
   
   <style scoped>
   .router-link-active {
-    @apply text-white font-semibold;
+    @reference text-white font-semibold;
   }
   
   .nuxt-link-exact-active {
-    @apply text-white font-semibold;
+    @reference text-white font-semibold;
   }
   </style>

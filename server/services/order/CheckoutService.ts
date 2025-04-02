@@ -1,5 +1,5 @@
 // server/services/order/CheckoutService.ts
-import { prisma } from "~/server/lib/prisma"
+import prisma from "~/lib/prisma"
 import { PricingService } from "~/server/services/core/PricingService"
 import { ProvisioningService } from "~/server/services/core/ProvisioningService"
 

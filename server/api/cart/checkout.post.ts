@@ -1,12 +1,14 @@
-import { JsonObject } from "@prisma/client/runtime/library"
-import { prisma } from "~/server/lib/prisma"
-import { getServerSession } from '#auth'
+import type { JsonObject } from "@prisma/client/runtime/library"
+import { auth } from '~/lib/auth'
+import prisma from '~/lib/prisma'
 import { stripe } from "~/server/services/stripeService"
 
 
 // server/api/cart/checkout.post.ts
 export default defineEventHandler(async (event) => {
-    const session = await getServerSession(event as any)
+  const session = await auth.api.getSession({
+    headers: event.headers
+  })
     const user = session?.user
     if (!user) throw createError({ statusCode: 401 })
   

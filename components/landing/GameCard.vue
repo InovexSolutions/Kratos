@@ -36,8 +36,9 @@
         <div class="text-blue-400 text-lg font-semibold">
           From ${{ game.minPrice }}/mo
         </div>
-        <div class="flex items-center text-white transition-colors"
-             :class="{ 'hover:text-blue-400': !game.soldOut }">
+        <div
+            class="flex items-center text-white transition-colors"
+            :class="{ 'hover:text-blue-400': !game.soldOut }">
           Get Started
           <Icon name="heroicons:arrow-right-20-solid" class="ml-2 w-4 h-4" />
         </div>

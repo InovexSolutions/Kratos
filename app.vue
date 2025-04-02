@@ -1,14 +1,6 @@
-<!-- app.vue -->
 <template>
-  <!-- <AuthLoader /> -->
-  <div>
-    <NuxtLayout>
-      <NuxtPage />
-    </NuxtLayout>
-  </div>
+  <UApp>
+    <NuxtRouteAnnouncer />
+    <NuxtPage />
+  </UApp>
 </template>
-
-<style>
-/* Global styles */
-/* @import url('~/assets/css/main.css'); */
-</style>

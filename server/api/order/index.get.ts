@@ -1,20 +1,37 @@
-import { prisma } from "~/server/lib/prisma"
-import { getServerSession } from '#auth'
+import { auth } from '~/lib/auth'
+import prisma from '~/lib/prisma'
 
-// server/api/order/index.get.ts
 export default defineEventHandler(async (event) => {
-    const session = await getServerSession(event as any)
-    if (!session?.user?.id) {
-      throw createError({ statusCode: 403, message: 'Unauthorized' })
-    }
-    const user = session?.user
-    
-    if (!user) throw createError({ statusCode: 401 })
-  
-    const orders = await prisma.order.findMany({
-      where: { userId: user.id },
-        include: { items: { include: { plan: true } } }
-    })
+  const session = await auth.api.getSession({
+    headers: event.headers
+  })
+  // Get authenticated user
+  if (!session?.user) {
+    throw createError({ statusCode: 401, message: 'Unauthorized' })
+  }
 
-    return orders
+  // Get user's orders
+  const orders = await prisma.order.findMany({
+    where: {
+      userId: session.user.id
+    },
+    include: {
+      items: {
+        include: {
+          plan: true
+        }
+      },
+      invoices: {
+        orderBy: {
+          createdAt: 'desc'
+        },
+        take: 5
+      }
+    },
+    orderBy: {
+      createdAt: 'desc'
+    }
+  })
+
+  return orders
 })

@@ -47,15 +47,18 @@ declare interface PterodactylServer {
     id: number
     identifier: string,
     name?: string,
-    status?: string
+    status?: string,
     allocation?: {
         ip: string
         port: number
-    }
+    },
+    nodeId?: number
 }
 
 // types/pterodactyl.d.ts
 export interface Node {
+    location_id: number
+    maintenance_mode: boolean
     id: number;
     attributes: {
         memory: number;
@@ -95,6 +98,30 @@ interface Allocation {
     assigned: boolean;
     ip: string;
     port: number;
+}
+
+// Define interface for egg data
+interface EggData {
+    docker_image: string;
+    startup: string;
+    relationships?: {
+        variables?: {
+            data: Array<{
+                attributes: {
+                    env_variable: string;
+                    default_value: string | number | boolean;
+                }
+            }>
+        }
+    };
+}
+
+interface ApiError extends Error {
+    data?: unknown;
+}
+
+interface PterodactylResponse {
+    attributes: EggData;
 }
 
 interface NodeWithLocation extends NodeResource {

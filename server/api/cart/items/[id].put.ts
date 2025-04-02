@@ -1,6 +1,6 @@
 import { z } from "zod"
-import { prisma } from "~/server/lib/prisma"
-import { getServerSession } from "#auth"
+import { auth } from '~/lib/auth'
+import prisma from '~/lib/prisma'
 
 // server/api/cart/items/[id].put.ts
 const updateSchema = z.object({
@@ -8,7 +8,9 @@ const updateSchema = z.object({
   })
   
   export default defineEventHandler(async (event) => {
-    const session = await getServerSession(event as any)
+    const session = await auth.api.getSession({
+      headers: event.headers
+    })
     const user = session?.user
     if (!user) throw createError({ statusCode: 401 })
   
