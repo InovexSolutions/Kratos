@@ -3,7 +3,7 @@
     <NavBar class="sticky top-0 z-50" />
 
     <div v-if="loading" class="container mx-auto px-4 py-12 flex justify-center">
-      <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"></div>
+      <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500"/>
     </div>
 
     <div v-else-if="error" class="container mx-auto px-4 py-12 text-center">
@@ -24,7 +24,8 @@
             </h1>
             <p class="text-gray-300 mt-2">Order ID: #{{ order.id?.slice(0,8) || 'N/A' }}</p>
           </div>
-          <span class="px-4 py-2 rounded-full text-sm" 
+          <span
+class="px-4 py-2 rounded-full text-sm" 
                 :class="statusBadge(order.status)">
             {{ order.status }}
           </span>
@@ -76,22 +77,26 @@
             </h2>
             
             <div class="grid grid-cols-2 gap-4 text-gray-400">
-              <button class="control-btn bg-green-500/20 hover:bg-green-500/30"
+              <button
+class="control-btn bg-green-500/20 hover:bg-green-500/30"
                       @click="restartServer">
                 <Icon name="heroicons:arrow-path" class="text-green-400" />
                 Restart Instance
               </button>
-              <button class="control-btn bg-blue-500/20 hover:bg-blue-500/30"
+              <button
+class="control-btn bg-blue-500/20 hover:bg-blue-500/30"
                       @click="openBackupModal">
                 <Icon name="heroicons:server-stack" class="text-blue-400" />
                 Create Backup
               </button>
-              <button class="control-btn bg-purple-500/20 hover:bg-purple-500/30"
+              <button
+class="control-btn bg-purple-500/20 hover:bg-purple-500/30"
                       @click="openStatsModal">
                 <Icon name="heroicons:chart-bar" class="text-purple-400" />
                 View Metrics
               </button>
-              <button class="control-btn bg-yellow-500/20 hover:bg-yellow-500/30"
+              <button
+class="control-btn bg-yellow-500/20 hover:bg-yellow-500/30"
                       @click="openConfigEditor">
                 <Icon name="heroicons:adjustments-vertical" class="text-yellow-400" />
                 Edit Config
@@ -106,7 +111,8 @@
                 <Icon name="heroicons:credit-card" class="text-purple-400" />
                 Billing & Payments
               </h2>
-              <button class="text-blue-400 hover:text-blue-300 text-sm"
+              <button
+class="text-blue-400 hover:text-blue-300 text-sm"
                       @click="refreshPaymentStatus">
                 Refresh Status
               </button>
@@ -116,7 +122,8 @@
             <div class="mb-6">
               <div class="flex items-center justify-between mb-2">
                 <h3 class="text-gray-400">Payment Method</h3>
-                <button class="text-sm text-blue-400 hover:text-blue-300"
+                <button
+class="text-sm text-blue-400 hover:text-blue-300"
                         @click="openPaymentMethodModal">
                   {{ order.paymentMethod ? 'Change Card' : 'Add Card' }}
                 </button>
@@ -136,7 +143,8 @@
               <h3 class="text-xl font-semibold text-gray-100 mb-4">Recent Invoices</h3>
               
               <div v-if="order.invoices && order.invoices.length > 0">
-                <div v-for="invoice in order.invoices" :key="invoice.id"
+                <div
+v-for="invoice in order.invoices" :key="invoice.id"
                      class="bg-gray-700/50 rounded-lg p-4 mb-3 hover:bg-gray-700/70 transition-colors">
                   
                   <div class="flex items-start justify-between">
@@ -183,14 +191,14 @@
                     <div class="flex gap-2">
                       <button 
                         v-if="invoice.status === 'UNPAID'"
-                        @click="payInvoice(invoice)"
-                        class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 text-sm rounded-lg transition-colors">
+                        class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 text-sm rounded-lg transition-colors"
+                        @click="payInvoice(invoice)">
                         Pay Now
                       </button>
                       
                       <button
-                        @click="downloadInvoice(invoice)"
-                        class="bg-gray-600/40 hover:bg-gray-600/60 text-gray-200 px-4 py-2 text-sm rounded-lg flex items-center gap-1 transition-colors">
+                        class="bg-gray-600/40 hover:bg-gray-600/60 text-gray-200 px-4 py-2 text-sm rounded-lg flex items-center gap-1 transition-colors"
+                        @click="downloadInvoice(invoice)">
                         <Icon name="heroicons:document-arrow-down" class="text-sm" />
                         Download
                       </button>
@@ -231,36 +239,65 @@
               <div class="flex justify-between items-center">
                 <span class="text-gray-400">Auto Renew</span>
                 <div class="relative inline-block w-10 mr-2 align-middle select-none">
-                  <input type="checkbox" 
-                         :checked="autoRenew" 
-                         @change="toggleAutoRenew"
-                         class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer" />
-                  <label class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-700 cursor-pointer"></label>
+                  <input
+                    type="checkbox" 
+                    :checked="autoRenew" 
+                    class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"
+                    @change="toggleAutoRenew" >
+                  <label class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-700 cursor-pointer"/>
+                </div>
+              </div>
+
+              <div v-if="order.status === 'CANCELLED'" class="mt-4 p-3 bg-red-500/10 rounded-lg border border-red-500/30">
+                <div class="flex items-start">
+                  <Icon name="heroicons:clock" class="text-red-400 mt-0.5 mr-2 flex-shrink-0" />
+                  <div>
+                    <h4 class="text-red-400 font-medium">Subscription Cancelled</h4>
+                    <p class="text-sm text-gray-300 mt-1">
+                      Your subscription has been cancelled.
+                      <span v-if="order.terminateAtPeriodEnd">
+                        Your server will be permanently deleted on {{ formatDate(order.nextBillingDate || order.subscription?.currentPeriodEnd) }}.
+                      </span>
+                      <span v-else>
+                        Your server will be paused at the end of your billing period.
+                      </span>
+                    </p>
+                    <button 
+                      v-if="order.status === 'CANCELLED'" 
+                      class="mt-3 text-sm bg-blue-500/20 text-blue-400 px-4 py-2 rounded-lg hover:bg-blue-500/30 transition-colors" 
+                      @click="reactivateSubscription">
+                      Reactivate Subscription
+                    </button>
+                  </div>
                 </div>
               </div>
 
               <div class="pt-4 border-t border-gray-700/50 space-y-3">
-                <button class="danger-btn w-full"
-                        @click="openCancelModal"
-                        v-if="order.status === 'ACTIVE'">
+                <button
+                    v-if="order.status === 'ACTIVE'"
+                    class="danger-btn w-full"
+                    @click="openCancelModal">
                   Cancel Subscription
                 </button>
 
-                <button class="danger-btn w-full"
-                        @click="openPauseModal"
-                        v-if="order.status === 'ACTIVE'">
+                <button
+                        v-if="order.status === 'ACTIVE'"
+                        class="danger-btn w-full"
+                        @click="openPauseModal">
                   Pause Service
                 </button>
 
-                <button class="success-btn w-full"
-                        @click="openUpgradeModal"
-                        v-if="order.status === 'ACTIVE'">
+                <button
+                    v-if="order.status === 'ACTIVE'"
+                    class="success-btn w-full"
+                    @click="openUpgradeModal">
                   Upgrade Plan
                 </button>
 
-                <button class="success-btn w-full"
-                        @click="retryPayment"
-                        v-if="order.status === 'UNPAID' || order.status === 'PAST_DUE'">
+                <button
+                    v-if="order.status === 'UNPAID' || order.status === 'PAST_DUE'"
+                    class="success-btn w-full"
+                    @click="retryPayment">
                   Retry Payment
                 </button>
               </div>
@@ -275,8 +312,9 @@
             </h2>
 
             <div class="space-y-4">
-              <button class="danger-btn w-full"
-                      @click="openDeleteModal">
+              <button
+                  class="danger-btn w-full"
+                  @click="openDeleteModal">
                 <Icon name="heroicons:trash" class="mr-2" />
                 Delete Server Permanently
               </button>
@@ -294,13 +332,41 @@
     <div v-if="showCancelModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
       <div class="bg-gray-800 p-6 rounded-xl w-full max-w-md border border-gray-700/50">
         <h3 class="text-xl font-bold mb-4">Cancel Subscription</h3>
-        <p class="text-gray-300 mb-6">Are you sure you want to cancel your subscription? Your server will be deactivated at the end of your billing period.</p>
+        <p class="text-gray-300 mb-4">Are you sure you want to cancel your subscription?</p>
+        
+        <div class="bg-gray-700/30 p-4 rounded-lg mb-6">
+          <div class="flex items-start mb-4">
+            <div class="relative inline-block w-10 mr-2 align-middle select-none mt-1">
+              <input
+                id="terminate-toggle" 
+                v-model="terminateAtPeriodEnd"
+                type="checkbox"
+                class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer" >
+              <label for="terminate-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-700 cursor-pointer"/>
+            </div>
+            <div class="ml-2">
+              <label for="terminate-toggle" class="text-gray-100 font-medium block mb-1">Terminate server at period end</label>
+              <p class="text-gray-400 text-sm">If enabled, your server will be completely deleted at the end of your current billing cycle on {{ formatDate(order.nextBillingDate || order.subscription?.currentPeriodEnd) }}.</p>
+            </div>
+          </div>
+          
+          <div v-if="!terminateAtPeriodEnd" class="text-sm text-yellow-400 bg-yellow-400/10 p-3 rounded-lg">
+            <Icon name="heroicons:information-circle" class="inline-block mr-1" />
+            Your subscription will be cancelled but your server will remain active until the end of your billing period, then be paused.
+          </div>
+          
+          <div v-else class="text-sm text-red-400 bg-red-400/10 p-3 rounded-lg">
+            <Icon name="heroicons:exclamation-triangle" class="inline-block mr-1" />
+            Warning: Your data will be permanently deleted when the billing period ends. This action cannot be undone.
+          </div>
+        </div>
+        
         <div class="flex justify-end gap-3">
-          <button @click="showCancelModal = false" class="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600">
+          <button class="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600" @click="showCancelModal = false">
             Keep Subscription
           </button>
-          <button @click="cancelSubscription" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
-            Cancel Subscription
+          <button class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600" @click="cancelSubscription">
+            Confirm Cancellation
           </button>
         </div>
       </div>
@@ -311,10 +377,10 @@
         <h3 class="text-xl font-bold mb-4">Delete Server Permanently</h3>
         <p class="text-gray-300 mb-6">This action cannot be undone. All data associated with this server will be permanently deleted.</p>
         <div class="flex justify-end gap-3">
-          <button @click="showDeleteModal = false" class="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600">
+          <button class="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600" @click="showDeleteModal = false">
             Cancel
           </button>
-          <button @click="deleteServer" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
+          <button class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600" @click="deleteServer">
             Delete Permanently
           </button>
         </div>
@@ -325,29 +391,29 @@
       <div class="bg-gray-800 p-6 rounded-xl w-full max-w-md border border-gray-700/50">
         <div class="flex justify-between items-center mb-6">
           <h3 class="text-xl font-bold text-gray-100">Update Payment Method</h3>
-          <button @click="showPaymentMethodModal = false" class="text-gray-400 hover:text-gray-200">
+          <button class="text-gray-400 hover:text-gray-200" @click="showPaymentMethodModal = false">
             <Icon name="heroicons:x-mark" class="w-5 h-5" />
           </button>
         </div>
         
         <div id="payment-element" class="mb-6">
           <!-- Stripe Elements will mount here -->
-          <div class="animate-pulse bg-gray-700/50 h-12 rounded-lg mb-2"></div>
-          <div class="animate-pulse bg-gray-700/50 h-12 rounded-lg mb-2"></div>
-          <div class="animate-pulse bg-gray-700/50 h-12 rounded-lg"></div>
+          <div class="animate-pulse bg-gray-700/50 h-12 rounded-lg mb-2"/>
+          <div class="animate-pulse bg-gray-700/50 h-12 rounded-lg mb-2"/>
+          <div class="animate-pulse bg-gray-700/50 h-12 rounded-lg"/>
         </div>
         
         <div class="flex justify-end gap-3 mt-4">
           <button 
-            @click="showPaymentMethodModal = false" 
-            class="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600">
+            class="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600" 
+            @click="showPaymentMethodModal = false">
             Cancel
           </button>
           <button 
-            @click="updatePaymentMethod" 
             :disabled="updatingPayment" 
-            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
-            <span v-if="updatingPayment" class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2" 
+            @click="updatePaymentMethod">
+            <span v-if="updatingPayment" class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>
             {{ updatingPayment ? 'Processing...' : 'Update Payment Method' }}
           </button>
         </div>
@@ -379,6 +445,7 @@ const showPaymentMethodModal = ref(false);  // This exists but wasn't being used
 const paymentClientSecret = ref(null);
 const stripeElements = ref(null);
 const updatingPayment = ref(false);
+const terminateAtPeriodEnd = ref(false); // Add this ref
 
 // Fetch order details
 const fetchOrder = async () => {
@@ -636,22 +703,37 @@ const cancelSubscription = async () => {
     });
     
     await $fetch(`/api/order/${order.value.id}/cancel`, {
-      method: 'POST'
+      method: 'POST',
+      body: {
+        terminateAtPeriodEnd: terminateAtPeriodEnd.value
+      }
     });
     
     showCancelModal.value = false;
     await fetchOrder();
     
-    toast.add({
-      title: 'Subscription Cancelled',
-      description: 'Your subscription has been cancelled successfully',
-      color: 'success',
-      icon: 'i-heroicons-check-circle'
-    });
+    // Updated success message to reflect the user's choice
+    if (terminateAtPeriodEnd.value) {
+      toast.add({
+        title: 'Subscription Cancelled',
+        description: 'Your subscription has been cancelled and server will be terminated at the end of your billing period.',
+        color: 'success',
+        icon: 'i-heroicons-check-circle',
+        timeout: 6000
+      });
+    } else {
+      toast.add({
+        title: 'Subscription Cancelled',
+        description: 'Your subscription has been cancelled. Your server will remain accessible until the end of your billing period.',
+        color: 'success',
+        icon: 'i-heroicons-check-circle',
+        timeout: 6000
+      });
+    }
   } catch (error) {
     toast.add({
       title: 'Cancellation Failed',
-      description: 'Failed to cancel your subscription',
+      description: error.data?.message || 'Failed to cancel your subscription',
       color: 'error',
       icon: 'i-heroicons-exclamation-circle'
     });
@@ -953,6 +1035,39 @@ const downloadInvoice = async (invoice) => {
       color: 'error',
       icon: 'i-heroicons-exclamation-circle'
     });
+  }
+};
+
+// Add this method to your script section
+const reactivateSubscription = async () => {
+  try {
+    toast.add({
+      title: 'Reactivating Subscription',
+      description: 'Please wait while we process your request...',
+      color: 'info',
+      icon: 'i-heroicons-clock'
+    });
+    
+    await $fetch(`/api/order/${order.value.id}/reactivate`, {
+      method: 'POST'
+    });
+    
+    await fetchOrder();
+    
+    toast.add({
+      title: 'Subscription Reactivated',
+      description: 'Your subscription has been successfully reactivated.',
+      color: 'success',
+      icon: 'i-heroicons-check-circle'
+    });
+  } catch (error) {
+    toast.add({
+      title: 'Reactivation Failed',
+      description: error.data?.message || 'Failed to reactivate your subscription',
+      color: 'error',
+      icon: 'i-heroicons-exclamation-circle'
+    });
+    console.error(error);
   }
 };
 

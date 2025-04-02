@@ -159,14 +159,14 @@ export class PterodactylService {
     return (node.memory * (node.memory_overallocate / 100 + 1)) - node.allocated_resources.memory;
   }
 
-  async findAvailableNodeWithAllocation(location: number, requiredMemory: number, requiredDisk: number): Promise<{ nodeId: number, allocationId: number }> {
+  async findAvailableNodeWithAllocation(location: number, requiredMemory: number, requiredCpu: number, requiredDisk: number): Promise<{ nodeId: number, allocationId: number }> {
     try {
       const nodeSelector = new NodeSelector();
       const result = await nodeSelector.findOptimalNode({
         location,
         memory: requiredMemory,
         disk: requiredDisk,
-        cpu: 100 // Default to 1 core if not specified elsewhere
+        cpu: requiredCpu
       });
 
       return result;
@@ -217,6 +217,7 @@ export class PterodactylService {
       const { nodeId, allocationId } = await this.findAvailableNodeWithAllocation(
         config.location,
         config.memory,
+        config.cpu,
         config.disk
       );
       // console.log('[Pterodactyl] Node and allocation:', nodeId, allocationId)

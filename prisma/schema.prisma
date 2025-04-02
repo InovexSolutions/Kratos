@@ -1,4 +1,3 @@
-
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-3.0.x"]
@@ -115,6 +114,7 @@ model Service {
   renewedAt       DateTime?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @default(now())
+  pendingCancellation Boolean @default(false)
 
   user         User                @relation(fields: [userId], references: [id])
   host         Host?               @relation(fields: [hostId], references: [id])
@@ -192,6 +192,7 @@ model Order {
   items           OrderItem[]
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @default(now())
+  terminateAtPeriodEnd Boolean @default(false)
 
   // Relations
   userId       String

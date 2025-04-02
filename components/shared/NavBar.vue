@@ -42,7 +42,7 @@
               </NuxtLink>
               <NuxtLink 
                 to="/auth/register" 
-                class="text-gray-300 bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-2 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all"
+                class="text-gray-100 bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-2 rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all"
               >
                 Get Started
               </NuxtLink>
@@ -94,11 +94,6 @@
                 >
                   Logout
                 </button>
-                <a 
-                  href="/api/auth/signout" 
-                  class="block px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white">
-                  Logout
-                </a>
               </div>
             </div>
           </div>
@@ -165,18 +160,12 @@
               <Icon name="mdi:account-cog" class="mr-2" />
               Settings
             </NuxtLink>
-            <a 
-              to="/api/auth/signout" 
-              class="block px-4 py-2 text-gray-300 hover:text-white"
-            >
+            <button 
+              class="block w-full text-left px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white" 
+              @click="authClient.signOut()"
+              >
               Logout
-            </a>
-            <!-- <button  -->
-              <!-- @click="auth.logout()"  -->
-              <!-- class="block w-full text-left px-4 py-2 text-gray-300 hover:text-white" -->
-            <!-- > -->
-              <!-- Logout -->
-            <!-- </button> -->
+            </button>
           </template>
         </div>
       </div>

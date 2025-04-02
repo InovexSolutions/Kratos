@@ -6,7 +6,7 @@
           Welcome Back
         </h1>
         
-        <form @submit.prevent="handleLogin" class="space-y-6">
+        <form class="space-y-6" @submit.prevent="handleLogin">
           <!-- Email Input -->
           <div>
             <label class="block text-gray-300 mb-2">Email</label>
@@ -47,15 +47,17 @@
             <span v-if="!isLoading">Login</span>
             <span v-else class="flex items-center justify-center">
               <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
               </svg>
             </span>
           </button>
           <button 
             type="button" 
-            @click="signIn('github')"
             class="w-full bg-gray-800/40 hover:bg-gray-700/40 text-gray-300 px-8 py-4 rounded-xl text-lg font-semibold transform hover:scale-[1.02] transition-all duration-300 shadow-lg shadow-gray-800/20"
+            @click="() => signIn.social({
+              provider: 'github'
+            })"
           >
             <span class="flex items-center justify-center">
               <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="w-6 h-6 mr-2 bi bi-github" viewBox="0 0 16 16">
@@ -66,8 +68,10 @@
           </button>
           <button 
             type="button" 
-            @click="signIn('discord')"
             class="w-full bg-gray-800/40 hover:bg-gray-700/40 text-gray-300 px-8 py-4 rounded-xl text-lg font-semibold transform hover:scale-[1.02] transition-all duration-300 shadow-lg shadow-gray-800/20"
+            @click="() => signIn.social({
+              provider: 'github'
+            })"
           >
             <span class="flex items-center justify-center">
               <svg class="w-6 h-6 mr-2" fill="currentColor" stroke="none" viewBox="0 0 16 16">
@@ -78,10 +82,10 @@
             </span>
           </button>
           <!-- New Authentik Button -->
-          <button 
+          <!-- <button 
             type="button" 
-            @click="signIn('authentik')"
             class="w-full bg-gray-800/40 hover:bg-gray-700/40 text-gray-300 px-8 py-4 rounded-xl text-lg font-semibold transform hover:scale-[1.02] transition-all duration-300 shadow-lg shadow-gray-800/20"
+            @click="signIn('authentik')"
           >
             <span class="flex items-center justify-center">
               <svg class="w-6 h-6 mr-2" viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
@@ -89,7 +93,7 @@
               </svg>
               Login with Authentik
             </span>
-          </button>
+          </button> -->
 
           <!-- Additional Links -->
           <div class="text-center space-y-2">
@@ -99,7 +103,7 @@
             >
               Create New Account
             </NuxtLink>
-            <div class="text-gray-400"></div>
+            <div class="text-gray-400"/>
             <NuxtLink 
               to="/auth/forgot-password" 
               class="text-blue-400 hover:text-blue-300 text-sm"
