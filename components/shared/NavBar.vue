@@ -84,6 +84,13 @@
                 >
                   Invoices
                 </NuxtLink>
+                <NuxtLink 
+                  to="/dashboard/servers" 
+                  class="block px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white"
+                >
+                  <Icon name="heroicons:server" class="mr-2" />
+                  Game Servers
+                </NuxtLink>
                 <NuxtLink to="/dashboard/settings" class="block px-4 py-3 text-gray-300 hover:bg-gray-800 hover:text-white">
                   <Icon name="mdi:account-cog" class="mr-2" />
                   Settings
@@ -155,6 +162,13 @@
               class="block px-4 py-2 text-gray-300 hover:text-white"
             >
               Invoices
+            </NuxtLink>
+            <NuxtLink 
+              to="/dashboard/servers" 
+              class="block px-4 py-2 text-gray-300 hover:text-white"
+            >
+              <Icon name="heroicons:server" class="mr-2" />
+              Game Servers
             </NuxtLink>
             <NuxtLink to="/dashboard/settings" class="nav-link">
               <Icon name="mdi:account-cog" class="mr-2" />

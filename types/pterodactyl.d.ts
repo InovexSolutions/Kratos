@@ -52,6 +52,11 @@ declare interface PterodactylServer {
         ip: string
         port: number
     },
+    limits?: {
+        memory: number
+        disk: number
+        cpu: number
+    },
     nodeId?: number
 }
 

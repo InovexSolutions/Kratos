@@ -25,9 +25,9 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     pterodactylApiKey: process.env.NUXT_PTERODACTYL_API_KEY || '',
+    pterodactylClientApiKey: process.env.NUXT_PUBLIC_PTERODACTYL_CLIENT_API_KEY || '',
     public: {
       pterodactylUrl: process.env.NUXT_PUBLIC_PTERODACTYL_URL || '',
-      pterodactylClientApiKey: process.env.NUXT_PUBLIC_PTERODACTYL_API_KEY || '',
       stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY || ''
     }
   },

@@ -144,7 +144,7 @@ model PterodactylServer {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   serviceId String   @unique @db.Uuid
   nodeId    Int
-  pteroId   Int
+  pteroId   Int      @unique
   createdAt DateTime @default(now())
 
   service Service @relation(fields: [serviceId], references: [id])

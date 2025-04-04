@@ -7,7 +7,8 @@ import { NodeSelector } from './NodeSelector'
 export class PterodactylService {
   private readonly config = {
     host: useRuntimeConfig().public.pterodactylUrl,
-    apiKey: useRuntimeConfig().pterodactylApiKey
+    apiKey: useRuntimeConfig().pterodactylApiKey,
+    clientApiKey: useRuntimeConfig().pterodactylClientApiKey // Add this line
   }
   private headers = {
     'Accept': 'application/json',
@@ -69,6 +70,25 @@ export class PterodactylService {
     console.log('[Pterodactyl] Pterodactyl db server updated:', pteroServer)
 
     return service
+  }
+
+  async deleteServer(serverId: number): Promise<void> {
+    try {
+      // Delete the server in Pterodactyl
+      await ofetch(`${this.config.host}/api/application/servers/${serverId}`, {
+        method: 'DELETE',
+        headers: this.getHeaders()
+      });
+
+      // Delete the server from the database
+      await prisma.pterodactylServer.delete({
+        where: { pteroId: serverId }
+      });
+    }
+    catch (error) {
+      console.error('Failed to delete server:', error);
+      throw new Error('Failed to delete server');
+    }
   }
 
   private async findOrCreateUser(user: User): Promise<string> {
@@ -331,6 +351,14 @@ export class PterodactylService {
     }
   }
 
+  private getClientHeaders() {
+    return {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${this.config.clientApiKey}`
+    }
+  }
+
   private generateUsername(email: string): string {
     // Extract the username part from the email address + hash the full email compress it to 8 characters and add it as a suffix
     const username = email.split('@')[0]
@@ -398,7 +426,7 @@ export class PterodactylService {
     return portEnvironment;
   }
 
-  async getServerDetails(serverId: string): Promise<PterodactylServer> {
+  async getServerDetails(serverId: number): Promise<PterodactylServer> {
     const response = await ofetch(`${this.config.host}/api/application/servers/${serverId}?include=allocations`, {
       headers: this.getHeaders()
     })
@@ -408,12 +436,36 @@ export class PterodactylService {
       identifier: response.attributes.identifier,
       name: response.attributes.name,
       status: response.attributes.status,
+      limits: {
+        cpu: response.attributes.limits.cpu,
+        memory: response.attributes.limits.memory,
+        disk: response.attributes.limits.disk,
+      },
       allocation: response.attributes.relationships.allocations.data[0].attributes
     }
   }
 
+  async getServerDetailsByIdentifier(identifier: string): Promise<PterodactylServer> {
+    const response = await ofetch(`${this.config.host}/api/client/servers/${identifier}`, {
+      headers: this.getClientHeaders()
+    });
+
+    return {
+      id: response.attributes.uuid,
+      identifier: response.attributes.identifier,
+      name: response.attributes.name,
+      status: response.attributes.is_suspended ? 'suspended' : (response.attributes.is_installing ? 'installing' : 'running'),
+      limits: {
+        cpu: response.attributes.limits.cpu,
+        memory: response.attributes.limits.memory,
+        disk: response.attributes.limits.disk,
+      },
+      allocation: response.attributes.relationships.allocations.data.find((alloc: any) => alloc.attributes.is_default)?.attributes
+    };
+  }
+
   async getServersFromUser(userId: number): Promise<PterodactylServer[]> {
-    const response = await ofetch(`${this.config.host}/api/application/users/${userId}?include=servers`, {
+    const response = await ofetch(`${this.config.host}/api/application/users/${userId}?include=servers,allocations`, {
       headers: this.getHeaders()
     })
 
@@ -436,8 +488,21 @@ export class PterodactylService {
       identifier: server.attributes.identifier,
       name: server.attributes.name,
       status: server.attributes.status,
-      allocation: server.attributes.relationships.allocations.data[0].attributes
+      // allocation: server.attributes.relationships.allocations.data[0].attributes
     }))
+  }
+
+  async getServerResources(serverId: string) {
+    const response = await ofetch(`${this.config.host}/api/client/servers/${serverId}/resources`, {
+      headers: this.getClientHeaders()
+    })
+    console.log('[Pterodactyl] Server resources:', response)
+    return {
+      cpu: Math.round(response.attributes.resources.cpu_absolute),
+      memory: response.attributes.resources.memory_bytes,
+      disk: response.attributes.resources.disk_bytes,
+      uptime: response.attributes.resources.uptime
+    }
   }
 
   async getNests() {
@@ -498,5 +563,90 @@ export class PterodactylService {
     return $fetch(`${this.config.host}/api/application/locations?include=nodes`, {
       headers: this.headers
     })
+  }
+
+  /**
+   * Get server utilization (CPU, memory, disk)
+   * @param serverId Server identifier
+   * @returns Utilization data
+   */
+  async getServerUtilization(serverId: string): Promise<any> {
+    try {
+      const response = await $fetch(`${this.config.host}/api/client/servers/${serverId}/resources`, {
+        headers: this.getClientHeaders()
+      });
+      
+      // Return both utilization data and current state
+      return {
+        cpu: response.attributes.resources.cpu_absolute * 100, // Multiply by 100 since 1.0 = 100%
+        memory: response.attributes.resources.memory_bytes / 1048576, // Convert to MB
+        disk: response.attributes.resources.disk_bytes / 1048576, // Convert to MB
+        uptime: response.attributes.resources.uptime,
+        network_rx: response.attributes.resources.network_rx_bytes,
+        network_tx: response.attributes.resources.network_tx_bytes,
+        status: response.attributes.current_state // Add the current state
+      };
+    } catch (error) {
+      console.error('Failed to get server utilization:', error);
+      throw new Error('Failed to get server utilization');
+    }
+  }
+
+  /**
+   * Get server console logs
+   * @param serverId Server identifier
+   * @returns Array of console log lines
+   */
+  async getServerConsoleLogs(serverId: string): Promise<string[]> {
+    try {
+      const response = await $fetch(`${this.config.host}/api/client/servers/${serverId}/logs`, {
+        headers: this.getClientHeaders()
+      });
+      
+      return response.data || [];
+    } catch (error) {
+      console.error('Failed to get console logs:', error);
+      throw new Error('Failed to get console logs');
+    }
+  }
+
+  /**
+   * Send command to server console
+   * @param serverId Server identifier
+   * @param command Command to send
+   */
+  async sendServerCommand(serverId: string, command: string): Promise<void> {
+    try {
+      await $fetch(`${this.config.host}/api/client/servers/${serverId}/command`, {
+        method: 'POST',
+        headers: this.getClientHeaders(),
+        body: {
+          command: command
+        }
+      });
+    } catch (error) {
+      console.error('Failed to send command:', error);
+      throw new Error('Failed to send command to server');
+    }
+  }
+
+  /**
+   * Send power action to server
+   * @param serverId Server identifier
+   * @param action Power action (start, stop, restart, kill)
+   */
+  async sendPowerAction(serverId: string, action: 'start' | 'stop' | 'restart' | 'kill'): Promise<void> {
+    try {
+      await $fetch(`${this.config.host}/api/client/servers/${serverId}/power`, {
+        method: 'POST',
+        headers: this.getClientHeaders(),
+        body: {
+          signal: action
+        }
+      });
+    } catch (error) {
+      console.error(`Failed to send ${action} action:`, error);
+      throw new Error(`Failed to ${action} server`);
+    }
   }
 }
