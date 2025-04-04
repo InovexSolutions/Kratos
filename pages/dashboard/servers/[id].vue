@@ -43,7 +43,7 @@
             <div class="bg-gray-800/40 p-4 rounded-xl border border-gray-700/50">
               <div class="text-gray-400 text-sm mb-1">CPU Usage</div>
               <div class="text-xl font-bold text-green-400">
-                {{ server.utilization?.cpu || 0 }}%
+                {{ server.utilization?.cpu?.toFixed(2) || 0 }}% / {{ server.limits?.cpu || 100 }}%
               </div>
             </div>
   
@@ -105,50 +105,8 @@
               </div>
             </div>
   
-            <!-- Console Section -->
-            <div class="bg-gray-800/40 p-6 rounded-xl border border-gray-700/50">
-              <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-gray-100 flex items-center gap-2">
-                  <Icon name="heroicons:command-line" class="text-purple-400" />
-                  Console
-                </h2>
-                <button
-                  class="text-blue-400 hover:text-blue-300 text-sm"
-                  @click="refreshConsole">
-                  Refresh
-                </button>
-              </div>
-              
-              <div class="bg-gray-900/50 rounded-lg p-4 h-80 overflow-y-auto font-mono text-sm text-gray-300">
-                <div v-if="loading" class="flex justify-center items-center h-full">
-                  <div class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"/>
-                </div>
-                <div v-else-if="consoleLines.length === 0" class="text-center py-10 text-gray-500">
-                  No console output available
-                </div>
-                <div v-else>
-                  <div v-for="(line, index) in consoleLines" :key="index" 
-                       class="pb-1 border-b border-gray-800/30 last:border-0">
-                    {{ line }}
-                  </div>
-                </div>
-              </div>
-              
-              <div class="mt-4 flex">
-                <input 
-                  v-model="commandInput" 
-                  type="text" 
-                  placeholder="Type command here..."
-                  class="flex-1 bg-gray-700/40 rounded-l-lg px-4 py-2 text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  @keyup.enter="sendCommand"
-                />
-                <button 
-                  class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-r-lg transition-colors"
-                  @click="sendCommand">
-                  Send
-                </button>
-              </div>
-            </div>
+            <!-- Console Component -->
+            <ServerConsole :server-id="serverId" />
           </div>
   
           <!-- Right Column - Server Information -->
@@ -195,10 +153,14 @@
                 <div>
                   <div class="flex justify-between items-center mb-2">
                     <span class="text-gray-400">CPU Usage</span>
-                    <span class="text-gray-100">{{ server.utilization?.cpu || 0 }}%</span>
+                    <span class="text-gray-100">{{ server.utilization?.cpu?.toFixed(2) || 0 }}% / {{ server.limits?.cpu || 100 }}%</span>
                   </div>
                   <div class="w-full bg-gray-700/50 rounded-full h-2">
-                    <div class="bg-blue-500 h-2 rounded-full" :style="`width: ${server.utilization?.cpu || 0}%`"></div>
+                    <div class="bg-blue-500 h-2 rounded-full" 
+                         :style="`width: ${Math.min((server.utilization?.cpu || 0), 100)}%`"></div>
+                  </div>
+                  <div v-if="(server.utilization?.cpu || 0) > 100" class="text-xs text-gray-500 mt-1">
+                    Using multiple cores ({{ Math.floor((server.utilization?.cpu || 0) / 100) }} cores)
                   </div>
                 </div>
   
@@ -280,6 +242,7 @@
   </template>
   
   <script setup>
+
   definePageMeta({
     auth: true
   });
@@ -290,8 +253,6 @@
   const server = ref({});
   const loading = ref(true);
   const error = ref(null);
-  const consoleLines = ref([]);
-  const commandInput = ref('');
   const toast = useToast(); // Replace $toast with useToast()
   
   // Fetch server details
@@ -314,62 +275,11 @@
         },
         status: response.status || 'offline' // Make sure status is properly set
       };
-      
-      // Also fetch console logs
-      fetchConsole();
-      
     } catch (err) {
       console.error('Error fetching server details:', err);
       error.value = err.message || 'Failed to load server details';
     } finally {
       loading.value = false;
-    }
-  };
-  
-  // Fetch console logs
-  const fetchConsole = async () => {
-    try {
-      const response = await $fetch(`/api/pterodactyl/server/${serverId}/console`);
-      consoleLines.value = response.data || [];
-    } catch (err) {
-      console.error('Error fetching console logs:', err);
-      // Don't set main error, just show empty console
-      consoleLines.value = [];
-    }
-  };
-  
-  // Refresh console logs
-  const refreshConsole = () => {
-    fetchConsole();
-  };
-  
-  // Send command to console
-  const sendCommand = async () => {
-    if (!commandInput.value.trim()) return;
-    
-    try {
-      await $fetch(`/api/pterodactyl/server/${serverId}/command`, {
-        method: 'POST',
-        body: { command: commandInput.value }
-      });
-      
-      // Add command to console for immediate feedback
-      consoleLines.value.push(`> ${commandInput.value}`);
-      
-      // Clear input
-      commandInput.value = '';
-      
-      // Refresh console after delay to see command output
-      setTimeout(fetchConsole, 1000);
-      
-    } catch (err) {
-      console.error('Error sending command:', err);
-      toast.add({
-        title: 'Command Failed',
-        description: 'Failed to send command to server',
-        color: 'error',
-        icon: 'i-heroicons-exclamation-circle'
-      });
     }
   };
   
@@ -379,14 +289,14 @@
     return `${server.allocation.ip}:${server.allocation.port}`;
   };
   
-  // Format memory values (KB to human-readable)
-  const formatMemory = (memoryKb) => {
-    if (!memoryKb) return '0 MB';
+  // Format memory values (MB to human-readable)
+  const formatMemory = (memoryMb) => {
+    if (!memoryMb) return '0 MB';
     
-    if (memoryKb >= 1048576) { // 1 GB in KB
-      return `${(memoryKb / 1048576).toFixed(2)} GB`;
+    if (memoryMb >= 1024) { // 1 GB in MB
+      return `${(memoryMb / 1024).toFixed(2)} GB`;
     } else {
-      return `${(memoryKb / 1024).toFixed(0)} MB`;
+      return `${Math.round(memoryMb)} MB`;
     }
   };
   

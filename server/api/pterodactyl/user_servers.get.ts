@@ -36,14 +36,14 @@ export default defineEventHandler(async (event) => {
         const enhancedServers = await Promise.all(servers.map(async (server) => {
             try {
                 // Get basic server details to get allocation data
-                const details = await pterodactyl.getServerDetails(server.id)
+                const details = await pterodactyl.getServerDetails(server.identifier)
                 console.log('Server details:', details)
                 
                 // Get server utilization (resources)
                 let utilization = { 
                     cpu: 0, 
-                    memory: 0,  // In MB 
-                    disk: 0,    // In MB
+                    memory: 0,
+                    disk: 0,
                     uptime: 0 
                 }
                 
@@ -51,29 +51,29 @@ export default defineEventHandler(async (event) => {
                 let status = server.status || 'offline'
 
                 try {
-                    utilization = await pterodactyl.getServerUtilization(server.identifier);
+                    const resourceData = await pterodactyl.getServerUtilization(server.identifier)
                     
-                    // Use the status from the resources endpoint
-                    if (utilization.status) {
-                        status = utilization.status;
+                    // Ensure we have the correct format
+                    utilization = {
+                        cpu: resourceData.cpu || 0,
+                        memory: resourceData.memory || 0,
+                        disk: resourceData.disk || 0,
+                        uptime: resourceData.uptime || 0
                     }
                     
-                    // Convert bytes to MB if needed
-                    if (utilization.memory > 1048576) { // If memory is in bytes
-                        utilization.memory = utilization.memory / 1048576; // Convert to MB
-                    }
-                    if (utilization.disk > 1048576) { // If disk is in bytes
-                        utilization.disk = utilization.disk / 1048576; // Convert to MB
+                    // Update status from resource data if available
+                    if (resourceData.status) {
+                        status = resourceData.status
                     }
                 } catch (err) {
-                    console.warn(`Failed to get utilization for server ${server.identifier}:`, err);
+                    console.warn(`Failed to get utilization for server ${server.identifier}:`, err)
                 }
                 
-                // Make sure limits are in the right format
+                // Ensure limits have the correct values in MB
                 const limits = {
-                    cpu: details.limits?.cpu || 100, // 100 = 1 core
-                    memory: details.limits?.memory || 1024, // MB
-                    disk: details.limits?.disk || 10240 // MB
+                    cpu: details.limits?.cpu || 100,
+                    memory: details.limits?.memory || 1024, // Memory in MB
+                    disk: details.limits?.disk || 10240 // Disk in MB
                 }
                 
                 return {
@@ -91,8 +91,8 @@ export default defineEventHandler(async (event) => {
                     utilization: { cpu: 0, memory: 0, disk: 0, uptime: 0 },
                     limits: {
                         cpu: 100,
-                        memory: 1024,
-                        disk: 10240
+                        memory: 1024, // Default 1GB in MB
+                        disk: 10240 // Default 10GB in MB
                     }
                 }
             }

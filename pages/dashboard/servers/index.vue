@@ -108,7 +108,7 @@ class="p-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transiti
               <div class="flex justify-between text-sm mb-1">
                 <span class="text-gray-400">CPU</span>
                 <span class="text-gray-100">
-                  {{ server.utilization?.cpu.toFixed(2) || 0 }}%
+                  {{ server.utilization?.cpu?.toFixed(2) || 0 }}% / {{ server.limits?.cpu || 100 }}%
                   <span v-if="(server.utilization?.cpu || 0) > 100" class="text-xs text-gray-500">
                     ({{ Math.floor((server.utilization?.cpu || 0) / 100) }} cores)
                   </span>
@@ -117,7 +117,7 @@ class="p-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transiti
               <div class="w-full bg-gray-700/50 rounded-full h-1.5">
                 <div
                   class="bg-blue-500 h-1.5 rounded-full" 
-                  :style="`width: ${Math.min((server.utilization?.cpu || 0), 100)}%`"/>
+                  :style="`width: ${Math.min((server.utilization?.cpu || 0), 100)}%`"></div>
               </div>
             </div>
             
@@ -129,7 +129,7 @@ class="p-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transiti
               <div class="w-full bg-gray-700/50 rounded-full h-1.5">
                 <div
                   class="bg-purple-500 h-1.5 rounded-full" 
-                  :style="`width: ${calculateMemoryPercentage(server.utilization?.memory, server.limits?.memory)}%`"/>
+                  :style="`width: ${calculateMemoryPercentage(server.utilization?.memory, server.limits?.memory)}%`"></div>
               </div>
             </div>
             
@@ -141,7 +141,7 @@ class="p-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transiti
               <div class="w-full bg-gray-700/50 rounded-full h-1.5">
                 <div
                   class="bg-green-500 h-1.5 rounded-full" 
-                  :style="`width: ${calculateMemoryPercentage(server.utilization?.disk, server.limits?.disk)}%`"/>
+                  :style="`width: ${calculateMemoryPercentage(server.utilization?.disk, server.limits?.disk)}%`"></div>
               </div>
             </div>
           </div>
@@ -238,7 +238,7 @@ const formatMemory = (memoryMb) => {
   if (memoryMb >= 1024) { // 1 GB in MB
     return `${(memoryMb / 1024).toFixed(2)} GB`;
   } else {
-    return `${memoryMb.toFixed(0)} MB`;
+    return `${Math.round(memoryMb)} MB`;
   }
 };
 

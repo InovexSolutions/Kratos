@@ -42,22 +42,26 @@ export default defineEventHandler(async (event) => {
         }
         
         // Fetch detailed server information
-        const serverDetails = await pterodactyl.getServerDetailsByIdentifier(serverId)
+        const serverDetails = await pterodactyl.getServerDetails(serverId)
         
         // Get additional server utilization information and status
-        let utilization = { cpu: 0, memory: 0, disk: 0, uptime: 0 };
-        let serverStatus = serverDetails.status || 'offline';
+        let utilization = { cpu: 0, memory: 0, disk: 0, uptime: 0 }
+        let serverStatus = serverDetails.status || 'offline'
 
         try {
-            utilization = await pterodactyl.getServerUtilization(serverId);
-            
-            // Use the status from the resources endpoint if available
-            if (utilization.status) {
-                serverStatus = utilization.status;
+            const resourceData = await pterodactyl.getServerUtilization(serverId)
+            utilization = {
+                cpu: resourceData.cpu,
+                memory: resourceData.memory,
+                disk: resourceData.disk,
+                uptime: resourceData.uptime
             }
-            
+            // Use the status from the resources endpoint if available
+            if (resourceData.status) {
+                serverStatus = resourceData.status
+            }
         } catch (error) {
-            console.warn(`Failed to get utilization for server ${serverId}:`, error);
+            console.warn(`Failed to get utilization for server ${serverId}:`, error)
         }
         
         // Extract egg name for better display
@@ -69,11 +73,13 @@ export default defineEventHandler(async (event) => {
             ...serverDetails,
             egg_name: eggName,
             utilization,
-            status: serverStatus, // Use the updated status
-            limits: serverDetails.limits || {
-                cpu: 100,  // Default to 1 core
-                memory: 1024, // Default to 1 GB in MB
-                disk: 10240  // Default to 10 GB in MB
+            status: serverStatus,
+            limits: {
+                cpu: serverDetails.limits?.cpu || 100,  // Default to 1 core
+                memory: serverDetails.limits?.memory || 1024, // Default to 1 GB in MB
+                disk: serverDetails.limits?.disk || 10240,  // Default to 10 GB in MB
+                io: serverDetails.limits?.io,
+                swap: serverDetails.limits?.swap
             }
         }
     } catch (error) {

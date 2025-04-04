@@ -426,22 +426,97 @@ export class PterodactylService {
     return portEnvironment;
   }
 
-  async getServerDetails(serverId: number): Promise<PterodactylServer> {
-    const response = await ofetch(`${this.config.host}/api/application/servers/${serverId}?include=allocations`, {
-      headers: this.getHeaders()
-    })
-    // console.log('[Pterodactyl] Server details:', response)
-    return {
-      id: response.attributes.id,
-      identifier: response.attributes.identifier,
-      name: response.attributes.name,
-      status: response.attributes.status,
-      limits: {
-        cpu: response.attributes.limits.cpu,
-        memory: response.attributes.limits.memory,
-        disk: response.attributes.limits.disk,
-      },
-      allocation: response.attributes.relationships.allocations.data[0].attributes
+  /**
+   * Get server utilization (CPU, memory, disk)
+   * @param serverId Server identifier
+   * @returns Utilization data
+   */
+  async getServerUtilization(serverId: string): Promise<any> {
+    try {
+      const response = await $fetch(`${this.config.host}/api/client/servers/${serverId}/resources`, {
+        headers: this.getClientHeaders()
+      });
+      
+      return {
+        // CPU is reported as 0-100 for each core, so multiply by 100 if it's a decimal
+        cpu: response.attributes.resources.cpu_absolute < 1 ? 
+             response.attributes.resources.cpu_absolute * 100 : 
+             response.attributes.resources.cpu_absolute,
+        
+        // Convert bytes to MB
+        memory: response.attributes.resources.memory_bytes / 1048576, 
+        disk: response.attributes.resources.disk_bytes / 1048576, 
+        uptime: response.attributes.resources.uptime,
+        network_rx: response.attributes.resources.network_rx_bytes,
+        network_tx: response.attributes.resources.network_tx_bytes,
+        status: response.attributes.current_state
+      };
+    } catch (error) {
+      console.error('Failed to get server utilization:', error);
+      throw new Error('Failed to get server utilization');
+    }
+  }
+
+  /**
+   * Get server details
+   * @param serverId Server identifier
+   * @returns Server details
+   */
+  async getServerDetails(serverId: string): Promise<any> {
+    try {
+      const response = await $fetch(`${this.config.host}/api/client/servers/${serverId}`, {
+        headers: this.getClientHeaders()
+      });
+      
+      const allocations = response.attributes.relationships?.allocations?.data || [];
+      const primaryAllocation = allocations.find(a => a.attributes.is_default) || allocations[0] || null;
+      
+      return {
+        id: response.attributes.identifier,
+        identifier: response.attributes.identifier,
+        name: response.attributes.name,
+        status: response.attributes.current_state || null,
+        isOwner: response.attributes.server_owner,
+        node: response.attributes.node,
+        description: response.attributes.description,
+        limits: {
+          cpu: response.attributes.limits.cpu || 0,
+          memory: response.attributes.limits.memory || 0, // Memory in MB
+          disk: response.attributes.limits.disk || 0, // Disk in MB
+          io: response.attributes.limits.io || 0,
+          swap: response.attributes.limits.swap || 0
+        },
+        allocation: primaryAllocation?.attributes || null,
+        allocations: allocations.map(a => a.attributes)
+      };
+    } catch (error) {
+      console.error('Failed to get server details:', error);
+      throw new Error('Failed to get server details');
+    }
+  }
+
+  /**
+   * Get server websocket details
+   * @param serverId Server identifier
+   * @returns WebSocket token and endpoint
+   */
+  async getServerWebsocket(serverId: string): Promise<{token: string, socket: string}> {
+    try {
+      const response = await $fetch(`${this.config.host}/api/client/servers/${serverId}/websocket`, {
+        headers: this.getClientHeaders()
+      });
+      
+      if (!response.data || !response.data.token || !response.data.socket) {
+        throw new Error('Invalid websocket response format');
+      }
+      
+      return {
+        token: response.data.token,
+        socket: response.data.socket
+      };
+    } catch (error) {
+      console.error('Failed to get server websocket details:', error);
+      throw new Error('Failed to get server websocket details');
     }
   }
 
@@ -563,51 +638,6 @@ export class PterodactylService {
     return $fetch(`${this.config.host}/api/application/locations?include=nodes`, {
       headers: this.headers
     })
-  }
-
-  /**
-   * Get server utilization (CPU, memory, disk)
-   * @param serverId Server identifier
-   * @returns Utilization data
-   */
-  async getServerUtilization(serverId: string): Promise<any> {
-    try {
-      const response = await $fetch(`${this.config.host}/api/client/servers/${serverId}/resources`, {
-        headers: this.getClientHeaders()
-      });
-      
-      // Return both utilization data and current state
-      return {
-        cpu: response.attributes.resources.cpu_absolute * 100, // Multiply by 100 since 1.0 = 100%
-        memory: response.attributes.resources.memory_bytes / 1048576, // Convert to MB
-        disk: response.attributes.resources.disk_bytes / 1048576, // Convert to MB
-        uptime: response.attributes.resources.uptime,
-        network_rx: response.attributes.resources.network_rx_bytes,
-        network_tx: response.attributes.resources.network_tx_bytes,
-        status: response.attributes.current_state // Add the current state
-      };
-    } catch (error) {
-      console.error('Failed to get server utilization:', error);
-      throw new Error('Failed to get server utilization');
-    }
-  }
-
-  /**
-   * Get server console logs
-   * @param serverId Server identifier
-   * @returns Array of console log lines
-   */
-  async getServerConsoleLogs(serverId: string): Promise<string[]> {
-    try {
-      const response = await $fetch(`${this.config.host}/api/client/servers/${serverId}/logs`, {
-        headers: this.getClientHeaders()
-      });
-      
-      return response.data || [];
-    } catch (error) {
-      console.error('Failed to get console logs:', error);
-      throw new Error('Failed to get console logs');
-    }
   }
 
   /**
