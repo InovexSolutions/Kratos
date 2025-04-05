@@ -1,68 +1,79 @@
 // server/api/orders/[id].get.ts
 import { z } from 'zod'
-import { prisma } from '~/server/lib/prisma'
-import { getServerSession } from '#auth'
+import { auth } from '~/lib/auth'
+import prisma from '~/lib/prisma'
+import { stripe } from '~/server/services/stripeService'
 
 const paramsSchema = z.object({
   id: z.string().uuid()
 })
 
 export default defineEventHandler(async (event) => {
-  // Validate request parameters
-  const params = await getValidatedRouterParams(event, paramsSchema.parse)
+  const id = event.context.params?.id
   
   // Get authenticated user
-  const session = await getServerSession(event as any)
+  const session = await auth.api.getSession({
+    headers: event.headers
+  })
   if (!session?.user) {
     throw createError({ statusCode: 401, message: 'Unauthorized' })
   }
-
-  // Fetch the order with relations
+  
+  // Get the specific order
   const order = await prisma.order.findUnique({
     where: {
-      id: params.id,
-      userId: session.user.id // Ensure order belongs to user
+      id,
+      userId: session.user.id
     },
     include: {
-      user: {
-        select: {
-          id: true,
-          email: true,
-          name: true
+      service: true,
+      items: {
+        include: {
+          plan: true
         }
       },
-      items: { include: { plan: true } },
-      service: true,
-      plan: true,
-      invoices: true,
+      invoices: {
+        orderBy: {
+          createdAt: 'desc'
+        }
+      },
       subscription: true
     }
   })
-
-  if (!order) {
-    throw createError({ 
-      statusCode: 404,
-      message: 'Order not found or access denied'
-    })
-  }
-
+  
   if (!order) {
     throw createError({ statusCode: 404, message: 'Order not found' })
-}
-
-  // Transform Decimal fields to numbers
-  const transformedOrder = {
-    ...order,
-    totalAmount: order.totalAmount.toNumber(),
-    plan: {
-      ...order.plan,
-      priceMonthly: order.plan?.priceMonthly?.toNumber()
-    },
-    invoices: order.invoices.map(invoice => ({
-      ...invoice,
-      amount: invoice.amount.toNumber()
-    }))
   }
-
-  return transformedOrder
+  
+  // Enhance the response with Stripe data
+  let paymentMethod = null
+  let nextBillingDate = null
+  
+  if (order.subscription?.stripeSubscriptionId) {
+    try {
+      // Get subscription details from Stripe
+      const subscription = await stripe.subscriptions.retrieve(
+        order.subscription.stripeSubscriptionId,
+        { expand: ['default_payment_method'] }
+      )
+      
+      // Get next billing date
+      if (subscription.current_period_end) {
+        nextBillingDate = new Date(subscription.current_period_end * 1000).toISOString()
+      }
+      
+      // Get payment method
+      if (subscription.default_payment_method) {
+        paymentMethod = subscription.default_payment_method
+      }
+    } catch (error) {
+      console.error('Error fetching Stripe data:', error)
+    }
+  }
+  
+  return {
+    ...order,
+    nextBillingDate,
+    paymentMethod
+  }
 })

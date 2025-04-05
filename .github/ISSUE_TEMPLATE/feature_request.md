@@ -1,8 +1,9 @@
+# .github/ISSUE_TEMPLATE/bug_report.md
 ---
 name: Feature request
 about: Suggest an idea for this project
-title: ''
-labels: ''
+title: "[FEATURE]"
+labels: feature
 assignees: ''
 
 ---

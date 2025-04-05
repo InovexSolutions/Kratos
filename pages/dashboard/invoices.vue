@@ -90,7 +90,6 @@
   </template>
   
   <script setup>
-  const auth = useAuthStore();
   const { data: invoices, pending, error } = await useAsyncData('invoices', 
   async () => {
     try {

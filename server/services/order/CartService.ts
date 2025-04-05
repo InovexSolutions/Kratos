@@ -1,5 +1,5 @@
 // server/services/order/CartService.ts
-import { prisma } from "~/server/lib/prisma"
+import prisma from "~/lib/prisma"
 
 interface CartItemAddParams {
   userId: string

@@ -1,22 +1,28 @@
 // server/services/core/PricingService.ts
-import { prisma } from "~/server/lib/prisma"
+import prisma from "~/lib/prisma"
+
+interface ResourceConfiguration {
+  memory: number;
+  disk: number;
+  [key: string]: number; // For any additional resources
+}
 
 interface PriceCalculationParams {
   planId: string
-  configuration: Record<string, any>
+  configuration: {
+    resources?: ResourceConfiguration;
+    [key: string]: unknown;
+  }
   duration: 'hourly' | 'monthly'
 }
 
 export class PricingService {
   async calculatePrice(params: PriceCalculationParams) {
-    const plan = await prisma.pricingPlan.findUnique({
-      where: { id: params.planId },
-      rejectOnNotFound: true
+    const plan = await prisma.pricingPlan.findUniqueOrThrow({
+      where: { id: params.planId }
     });
 
-    const basePrice = params.duration === 'hourly' 
-      ? plan.priceHourly 
-      : plan.priceMonthly;
+    const basePrice = plan.priceMonthly;
 
     let total = Number(basePrice);
     const lineItems = [{
@@ -47,6 +53,7 @@ export class PricingService {
     };
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private calculateResourceCost(plan: any, resources: any) {
     const baseSpec = plan.specs;
     let cost = 0;

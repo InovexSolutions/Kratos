@@ -96,7 +96,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Credits
 
-Built with ❤️ by the Kratos team.
+Built with ❤️ by the Kratos and Inovex Solutions team.
 
 ## 📧 Contact
 

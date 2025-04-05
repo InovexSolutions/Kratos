@@ -1,8 +1,9 @@
 // server/api/cart/items/index.post.ts
 import { z } from 'zod';
-import { prisma } from '~/server/lib/prisma';
-import { getServerSession } from '#auth'
-import { calculateDynamicPrice, PricingModel } from '~/server/utils/priceCalculator';
+import { auth } from '~/lib/auth'
+import prisma from '~/lib/prisma'
+import type { PricingModel } from '~/server/utils/priceCalculator';
+import { calculateDynamicPrice } from '~/server/utils/priceCalculator';
 
 const itemSchema = z.object({
     planId: z.string().uuid(),
@@ -11,7 +12,9 @@ const itemSchema = z.object({
   })
   
   export default defineEventHandler(async (event) => {
-    const session = await getServerSession(event as any)
+    const session = await auth.api.getSession({
+      headers: event.headers
+    })
     const user = session?.user
     if (!user) throw createError({ statusCode: 401 })
   
@@ -34,6 +37,7 @@ const itemSchema = z.object({
     if (!plan) throw createError({ statusCode: 404, message: 'Plan not found' })
 
     // Validate configuration against template
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const configTemplate = plan.configTemplate as Record<string, any>;
     const configSchema = z.object(
       Object.fromEntries(

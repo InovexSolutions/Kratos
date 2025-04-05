@@ -1,6 +1,6 @@
 // server/services/order/PaymentService.ts
 import Stripe from 'stripe'
-import { prisma } from "~/server/lib/prisma"
+import prisma from "~/lib/prisma"
 import { ProvisioningService } from '../core/ProvisioningService';
 
 export class PaymentService {
@@ -44,6 +44,19 @@ export class PaymentService {
   }
 
   async handleWebhook(event: Stripe.Event) {
+    if (event.type === 'customer.subscription.created') {
+      const subscription = event.data.object as Stripe.Subscription;
+      console.log('Subscription created:', subscription.id);
+      // Update order status
+      await this.handleSubscriptionCreated(subscription);
+    }
+    
+    if (event.type === 'invoice.payment_succeeded' && event.data.object.subscription) {
+      const invoice = event.data.object as Stripe.Invoice;
+      console.log('Subscription payment succeeded:', invoice.subscription);
+      // Update invoice as paid, provision services if initial payment
+      await this.handleSubscriptionPaymentSucceeded(invoice);
+    }
     if (event.type === 'checkout.session.completed') {
       console.log('Checkout session completed:', event.data.object);
       const session = event.data.object as Stripe.Checkout.Session;
@@ -54,6 +67,72 @@ export class PaymentService {
         throw new Error('Client reference ID is null');
       }
       console.log('Order fulfilled:', session.client_reference_id);
+    }
+  }
+
+  async handleSubscriptionCreated(subscription: Stripe.Subscription) {
+    // Extract orderId from subscription metadata
+    const { orderId } = subscription.metadata || {};
+    
+    if (!orderId) {
+      console.error('No orderId found in subscription metadata');
+      return;
+    }
+    
+    try {
+      // Update the order and mark it as active
+      await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          status: 'PENDING',
+          updatedAt: new Date()
+        }
+      });
+      
+      console.log(`Order ${orderId} status updated to PENDING`);
+    } catch (error) {
+      console.error(`Failed to update order ${orderId}:`, error);
+    }
+  }
+
+  async handleSubscriptionPaymentSucceeded(invoice: Stripe.Invoice) {
+    // Get the subscription ID
+    const subscriptionId = typeof invoice.subscription === 'string' 
+      ? invoice.subscription 
+      : invoice.subscription?.id;
+      
+    if (!subscriptionId) {
+      console.error('No subscriptionId found in invoice');
+      return;
+    }
+    
+    try {
+      // Get the subscription to access its metadata
+      const subscription = await this.stripe.subscriptions.retrieve(subscriptionId);
+      const { orderId } = subscription.metadata || {};
+      
+      if (!orderId) {
+        console.error('No orderId found in subscription metadata');
+        return;
+      }
+      
+      // Create an invoice record for this payment
+      await prisma.invoice.create({
+        data: {
+          orderId: orderId,
+          userId: (await prisma.order.findUnique({ where: { id: orderId } }))?.userId || '',
+          amount: Number(invoice.amount_paid) / 100, // Convert from cents
+          status: 'PAID',
+          paidAt: new Date(),
+          periodStart: new Date(invoice.period_start * 1000), // Convert from Unix timestamp
+          periodEnd: new Date(invoice.period_end * 1000),
+          stripeInvoiceId: invoice.id
+        }
+      });
+      
+      console.log(`Created invoice record for subscription payment, order ${orderId}`);
+    } catch (error) {
+      console.error(`Failed to process subscription payment for invoice ${invoice.id}:`, error);
     }
   }
 
@@ -81,10 +160,24 @@ export class PaymentService {
       // Provision services
       const provisioningService = new ProvisioningService();
       for (const item of order.items) {
+        // Extract and validate configuration from the item
+        const config = item.configuration as Record<string, any>;
+        
+        // Create a properly typed configuration object
+        const serviceConfig = {
+          ram: config.ram || 4,
+          cpu: config.cpu || 2,
+          disk: config.disk || 20,
+          location: config.location || 'us-east',
+          gameType: config.gameType,
+          slots: config.slots,
+          dedicatedIp: config.dedicatedIp || false
+        };
+        
         await provisioningService.provisionService({
           userId: order.userId,
           serviceType: item.plan.serviceType,
-          configuration: item.configuration
+          configuration: serviceConfig
         });
       }
 

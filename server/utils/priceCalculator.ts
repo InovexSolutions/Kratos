@@ -8,6 +8,7 @@ export interface PricingModel {
     }[];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function calculateDynamicPrice(basePrice: number, config: any, pricingModel?: PricingModel) {
     if (!pricingModel) return basePrice;
 

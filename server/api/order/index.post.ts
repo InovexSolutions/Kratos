@@ -1,11 +1,13 @@
-import { $Enums } from "@prisma/client"
-import { JsonValue, Decimal } from "@prisma/client/runtime/library"
-import { prisma } from "~/server/lib/prisma"
-import { getServerSession } from '#auth'
+import type { $Enums } from "@prisma/client"
+import type { JsonValue, Decimal } from "@prisma/client/runtime/library"
+import prisma from "~/lib/prisma"
+import { auth } from '~/lib/auth'
 
 // server/api/order/index.post.ts
 export default defineEventHandler(async (event) => {
-    const session = await getServerSession(event as any)
+    const session = await auth.api.getSession({
+      headers: event.headers
+    })
     const user = session?.user
     if (!user) throw createError({ statusCode: 401 })
   
