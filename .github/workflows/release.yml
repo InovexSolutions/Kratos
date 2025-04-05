@@ -1,0 +1,211 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Build application
+        run: npm run build
+
+      - name: Create .env.example if not exists
+        run: |
+          if [ ! -f .env.example ]; then
+            cp .env.example.template .env.example || echo "# Environment Variables
+            # Database
+            DATABASE_URL=postgresql://postgres:postgres@localhost:5432/kratos
+            # Auth
+            AUTH_SECRET=your-auth-secret
+            # Stripe
+            STRIPE_SECRET_KEY=your-stripe-secret-key
+            STRIPE_WEBHOOK_SECRET=your-stripe-webhook-secret
+            # Pterodactyl
+            PTERODACTYL_URL=https://panel.example.com
+            PTERODACTYL_API_KEY=your-pterodactyl-api-key
+            PTERODACTYL_CLIENT_API_KEY=your-pterodactyl-client-api-key
+            # Discord Webhook (optional)
+            DISCORD_WEBHOOK_URL=your-discord-webhook-url" > .env.example
+          fi
+
+      - name: Create deployment package
+        run: |
+          mkdir -p release
+          cp -r .output release/
+          cp -r .nuxt release/
+          cp -r prisma release/
+          cp package.json release/
+          cp package-lock.json release/
+          cp .env.example release/
+          cp LICENSE release/ || true
+          cp README.md release/
+          cp CONTRIBUTING.md release/ || true
+          cp -r docker release/ || mkdir -p release/docker
+          
+          # Create deploy scripts
+          cat > release/deploy.sh << 'EOF'
+          #!/bin/bash
+          echo "Installing dependencies..."
+          npm ci --production
+          echo "Running database migrations..."
+          npx prisma migrate deploy
+          echo "Starting Kratos Panel..."
+          npm start
+          EOF
+          
+          chmod +x release/deploy.sh
+          
+          # Create docker-compose.yml
+          cat > release/docker-compose.yml << 'EOF'
+          version: '3'
+          services:
+            kratos:
+              build: .
+              ports:
+                - "3000:3000"
+              env_file:
+                - .env
+              depends_on:
+                - postgres
+            postgres:
+              image: postgres:14
+              environment:
+                POSTGRES_PASSWORD: postgres
+                POSTGRES_USER: postgres
+                POSTGRES_DB: kratos
+              volumes:
+                - postgres_data:/var/lib/postgresql/data
+          volumes:
+            postgres_data:
+          EOF
+          
+          # Create Dockerfile
+          cat > release/Dockerfile << 'EOF'
+          FROM node:18-alpine
+          WORKDIR /app
+          COPY . .
+          RUN npm ci --production
+          RUN npx prisma generate
+          EXPOSE 3000
+          CMD ["npm", "start"]
+          EOF
+          
+          # Create installation instructions
+          cat > release/INSTALL.md << 'EOF'
+          # Kratos Panel Installation Guide
+          
+          ## Prerequisites
+          - Node.js 18 or higher
+          - PostgreSQL database
+          - Pterodactyl panel with API access
+          - Stripe account (for payments)
+          
+          ## Standard Installation
+          
+          1. Extract the release package
+          2. Copy `.env.example` to `.env` and fill in your configuration details
+          3. Run the deployment script:
+             ```
+             ./deploy.sh
+             ```
+          
+          ## Docker Installation
+          
+          1. Extract the release package
+          2. Copy `.env.example` to `.env` and fill in your configuration details
+          3. Start the containers:
+             ```
+             docker-compose up -d
+             ```
+          
+          ## Manual Installation
+          
+          1. Extract the release package
+          2. Copy `.env.example` to `.env` and fill in your configuration details
+          3. Install dependencies:
+             ```
+             npm ci --production
+             ```
+          4. Run database migrations:
+             ```
+             npx prisma migrate deploy
+             ```
+          5. Start the application:
+             ```
+             npm start
+             ```
+          
+          ## Post-Installation
+          
+          1. Access your panel at http://your-server:3000
+          2. Set up an admin account
+          3. Configure Pterodactyl connection
+          4. Set up Stripe webhook endpoints
+          
+          For more detailed instructions, refer to the project documentation.
+          EOF
+          
+          # Package everything
+          cd release
+          zip -r ../kratos-panel-${GITHUB_REF#refs/tags/}.zip .
+          cd ..
+
+      - name: Build Docker image
+        run: |
+          cd release
+          docker build -t kratoshost/kratos-panel:${GITHUB_REF#refs/tags/} .
+          docker save kratoshost/kratos-panel:${GITHUB_REF#refs/tags/} | gzip > ../kratos-panel-docker-${GITHUB_REF#refs/tags/}.tar.gz
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Kratos Panel ${{ github.ref_name }}
+          draft: false
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+          generate_release_notes: true
+          files: |
+            kratos-panel-${{ github.ref_name }}.zip
+            kratos-panel-docker-${{ github.ref_name }}.tar.gz
+          body: |
+            # Kratos Panel ${{ github.ref_name }}
+            
+            ## Installation
+            
+            ### Option 1: Standard Installation
+            
+            1. Download and extract `kratos-panel-${{ github.ref_name }}.zip`
+            2. Configure your `.env` file
+            3. Run `./deploy.sh`
+            
+            ### Option 2: Docker Installation
+            
+            1. Download and extract `kratos-panel-${{ github.ref_name }}.zip`
+            2. Configure your `.env` file
+            3. Run `docker-compose up -d`
+            
+            ### Option 3: Docker Image
+            
+            1. Download `kratos-panel-docker-${{ github.ref_name }}.tar.gz`
+            2. Load the image: `docker load < kratos-panel-docker-${{ github.ref_name }}.tar.gz`
+            3. Run the container: `docker run -p 3000:3000 --env-file .env kratoshost/kratos-panel:${{ github.ref_name }}`
+            
+            For detailed installation instructions, refer to the INSTALL.md file included in the release package.
