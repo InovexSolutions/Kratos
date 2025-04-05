@@ -544,7 +544,7 @@ export class PterodactylService {
       headers: this.getHeaders()
     })
 
-    console.log('[Pterodactyl] User servers:', response.attributes.relationships.servers.data)
+    // console.log('[Pterodactyl] User servers:', response.attributes.relationships.servers.data)
 
     return response.attributes.relationships.servers.data.map((server: {
       attributes: {

@@ -70,7 +70,7 @@
             type="button" 
             class="w-full bg-gray-800/40 hover:bg-gray-700/40 text-gray-300 px-8 py-4 rounded-xl text-lg font-semibold transform hover:scale-[1.02] transition-all duration-300 shadow-lg shadow-gray-800/20"
             @click="() => signIn.social({
-              provider: 'github'
+              provider: 'github' // Discord gotta change it
             })"
           >
             <span class="flex items-center justify-center">

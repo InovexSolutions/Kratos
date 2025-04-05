@@ -44,5 +44,6 @@ export default defineNuxtConfig({
   ],
   routeRules: {
     '/dashboard/orders/**': { ssr: false },
+    '/auth/**': { ssr: false },
   },
 })

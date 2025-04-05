@@ -395,12 +395,12 @@
   onMounted(fetchServer);
   
   // Set up polling to refresh server status
-  let refreshInterval;
-  onMounted(() => {
-    refreshInterval = setInterval(() => {
-      fetchServer();
-    }, 30000); // Refresh every 30 seconds
-  });
+  // let refreshInterval;
+  // onMounted(() => {
+  //   refreshInterval = setInterval(() => {
+  //     fetchServer();
+  //   }, 30000); // Refresh every 30 seconds
+  // });
   
   onBeforeUnmount(() => {
     if (refreshInterval) clearInterval(refreshInterval);

@@ -28,4 +28,8 @@ export const auth = betterAuth({
             createCustomerOnSignUp: false,
         })
     ],
+    trustedOrigins: [
+        "http://localhost:3000",
+        "http://10.1.0.2:3000",
+    ]
 });

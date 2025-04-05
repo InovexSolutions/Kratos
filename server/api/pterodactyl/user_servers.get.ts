@@ -30,7 +30,7 @@ export default defineEventHandler(async (event) => {
     try {
         const pterodactyl = new PterodactylService()
         const servers = await pterodactyl.getServersFromUser(user.pteroUserId)
-        console.log('[Pterodactyl] User servers:', servers)
+        // console.log('[Pterodactyl] User servers:', servers)
         
         // Enhanced server data with proper error handling
         const enhancedServers = await Promise.all(servers.map(async (server) => {
