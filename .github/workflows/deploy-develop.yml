@@ -98,13 +98,19 @@ jobs:
               && rm -rf /var/lib/apt/lists/*
 
           WORKDIR /app
-          
+
+          RUN pwd
+          RUN ls -la /app
+          RUN ls -la 
+
           # Copy from builder
           COPY --from=builder /app/.output /app/.output
           COPY --from=builder /app/node_modules /app/node_modules
           COPY --from=builder /app/package.json /app/
           COPY --from=builder /app/prisma /app/prisma
           COPY --from=builder /app/.env.preprod /app/.env
+
+          RUN ls -la /app/.output
 
           EXPOSE 3000
           
