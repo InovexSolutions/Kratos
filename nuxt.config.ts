@@ -47,6 +47,6 @@ export default defineNuxtConfig({
     '/auth/**': { ssr: false },
   },
   alias: {
-    ".prisma/client/index-browser": `./node_modules/@prisma/client/index-browser.js`,
+    ".prisma/client/index-browser": `./node_modules/.prisma/client/index-browser.js`,
   },
 })
