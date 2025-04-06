@@ -82,18 +82,23 @@ jobs:
           mkdir -p .github/docker
           cat > .github/docker/Dockerfile.preprod << 'EOF'
           # Build stage with Node.js
-          FROM node:18-alpine AS builder
+          FROM oven/bun:latest AS builder
 
           # Install necessary build dependencies
-          RUN apk add --no-cache python3 make g++ gcc
+          RUN apt-get update && apt-get install -y \
+              python3 \
+              make \
+              g++ \
+              gcc \
+              && ln -s /usr/bin/python3 /usr/bin/python
 
           WORKDIR /app
           COPY . .
 
           # Install dependencies with Node.js (more compatible)
-          RUN npm ci
-          RUN npx prisma generate
-          RUN npm run build
+          RUN bun install
+          RUN bunx prisma generate
+          RUN bun run build
 
           # Runtime stage with Bun
           FROM oven/bun:latest
