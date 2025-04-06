@@ -46,4 +46,7 @@ export default defineNuxtConfig({
     '/dashboard/orders/**': { ssr: false },
     '/auth/**': { ssr: false },
   },
+  alias: {
+    ".prisma/client/index-browser": `./node_modules/@prisma/client/index-browser.js`,
+  },
 })
