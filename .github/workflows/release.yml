@@ -5,6 +5,10 @@ on:
     tags:
       - 'v*.*.*'
 
+permissions: 
+  contents: write
+  discussions: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -213,7 +217,7 @@ jobs:
 
       - name: Create GitHub Release
         id: create_release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           name: Kratos Panel ${{ github.ref_name }}
           draft: false
