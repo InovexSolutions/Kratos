@@ -24,14 +24,11 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Install dependencies
-        run: bun install
-
-      - name: Generate Prisma client
-        run: bunx prisma generate
-
-      - name: Build application
-        run: bun run build
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
 
       # Create preproduction environment file
       - name: Create .env.preprod
@@ -53,7 +50,7 @@ jobs:
           PTERODACTYL_API_KEY=your-pterodactyl-api-key
           PTERODACTYL_CLIENT_API_KEY=your-pterodactyl-client-api-key
           # Discord Webhook (optional)
-          DISCORD_WEBHOOK_URL=your-discord-webhook-url"
+          DISCORD_WEBHOOK_URL=your-discord-webhook-url
           EOF
 
       # Set up Docker Buildx for multi-platform builds
@@ -79,30 +76,26 @@ jobs:
             type=sha,format=short
             type=raw,value=preproduction
 
-      # Create Dockerfile for preproduction
+      # Create Dockerfile for preproduction with Node.js for build and Bun for runtime
       - name: Create Preproduction Dockerfile
         run: |
           mkdir -p .github/docker
           cat > .github/docker/Dockerfile.preprod << 'EOF'
-          FROM oven/bun:latest AS builder
+          # Build stage with Node.js
+          FROM node:18-alpine AS builder
 
           # Install necessary build dependencies
-          RUN apt-get update && apt-get install -y \
-              python3 \
-              make \
-              g++ \
-              gcc \
-              && ln -s /usr/bin/python3 /usr/bin/python
+          RUN apk add --no-cache python3 make g++ gcc
 
           WORKDIR /app
           COPY . .
 
-          # Install dependencies and build
-          RUN bun install
-          RUN bunx prisma generate
-          RUN bun run build
+          # Install dependencies with Node.js (more compatible)
+          RUN npm ci
+          RUN npx prisma generate
+          RUN npm run build
 
-          # For production-only runtime
+          # Runtime stage with Bun
           FROM oven/bun:latest
 
           # Install runtime dependencies only
@@ -111,19 +104,16 @@ jobs:
               && rm -rf /var/lib/apt/lists/*
 
           WORKDIR /app
-
-          RUN pwd
-          RUN ls -la /app
-          RUN ls -la 
-
-          # Copy from builder
+          
+          # Copy only the build artifacts and necessary files
           COPY --from=builder /app/.output /app/.output
           COPY --from=builder /app/node_modules /app/node_modules
           COPY --from=builder /app/package.json /app/
           COPY --from=builder /app/prisma /app/prisma
-          COPY --from=builder /app/.env.preprod /app/.env
+          COPY --from=builder /app/.env.preprod /app/
 
-          RUN ls -la /app/.output
+          # Verify files are copied correctly
+          RUN ls -la /app/.output || echo "Output directory not found!"
 
           EXPOSE 3000
           
@@ -131,6 +121,7 @@ jobs:
           ENV NODE_ENV=production
           ENV APP_ENV=preproduction
 
+          # Use Bun for runtime
           CMD ["bun", "start"]
           EOF
 
@@ -163,6 +154,26 @@ jobs:
           username: ${{ secrets.SERVER_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            # Create environment file directory if it doesn't exist
+            mkdir -p /home/${{ secrets.SERVER_USERNAME }}/kratos-preprod
+            
+            # Create or update environment file (consider using secrets)
+            cat > /home/${{ secrets.SERVER_USERNAME }}/kratos-preprod/.env << 'EOF'
+            # Preproduction Environment Variables
+            FRONTEND_URL=${{ secrets.PREPROD_URL }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            BETTER_AUTH_SECRET=${{ secrets.AUTH_SECRET }}
+            BETTER_AUTH_URL=${{ secrets.PREPROD_URL }}
+            STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
+            STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}
+            NUXT_PUBLIC_PTERODACTYL_URL=${{ secrets.PTERODACTYL_URL }}
+            NUXT_PTERODACTYL_API_KEY=${{ secrets.PTERODACTYL_API_KEY }}
+            NUXT_PUBLIC_PTERODACTYL_CLIENT_API_KEY=${{ secrets.PTERODACTYL_CLIENT_API_KEY }}
+            # DISCORD_WEBHOOK_URL=${{ secrets.DISCORD_WEBHOOK_URL }}
+            GH_ID=${{ secrets.GH_ID }}
+            GH_SECRET=${{ secrets.GH_SECRET }}
+            EOF
+            
             # Pull the latest image
             docker pull ghcr.io/${{ github.repository }}:develop
             
@@ -174,7 +185,7 @@ jobs:
             docker run -d --name kratos-preprod \
               -p 3001:3000 \
               --restart unless-stopped \
-              --env-file /path/to/preprod.env \
+              --env-file /home/${{ secrets.SERVER_USERNAME }}/kratos-preprod/.env \
               ghcr.io/${{ github.repository }}:develop
 
       # Update deployment status
@@ -185,16 +196,3 @@ jobs:
           state: success
           deployment-id: ${{ steps.deployment.outputs.deployment_id }}
           environment-url: ${{ secrets.PREPROD_URL }}
-
-      # Send notification on successful deployment
-      # - name: Notify of successful deployment
-      #   if: success()
-      #   uses: rtCamp/action-slack-notify@v2
-      #   env:
-      #     SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-      #     SLACK_CHANNEL: deployments
-      #     SLACK_COLOR: good
-      #     SLACK_TITLE: New preproduction deployment
-      #     SLACK_MESSAGE: |
-      #       Deployed version ${{ github.sha }} to preproduction
-      #       Access it at ${{ secrets.PREPROD_URL }}
