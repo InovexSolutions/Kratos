@@ -112,7 +112,7 @@ jobs:
 
       # Build and push Docker image
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: true
@@ -162,6 +162,9 @@ jobs:
             # Convert repository name to lowercase for Docker
             REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
             
+            # Login to GitHub Container Registry
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+
             # Pull the latest image
             docker pull ghcr.io/${REPO_LOWERCASE}:develop
             
