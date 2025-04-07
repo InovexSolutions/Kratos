@@ -158,9 +158,12 @@ jobs:
             GH_ID=${{ secrets.GH_ID }}
             GH_SECRET=${{ secrets.GH_SECRET }}
             EOF
+
+            # Convert repository name to lowercase for Docker
+            REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
             
             # Pull the latest image
-            docker pull ghcr.io/${{ github.repository }}:develop
+            docker pull ghcr.io/${REPO_LOWERCASE}:develop
             
             # Stop and remove any existing container
             docker stop kratos-preprod || true
@@ -171,7 +174,7 @@ jobs:
               -p 3001:3000 \
               --restart unless-stopped \
               --env-file /home/${{ secrets.SERVER_USERNAME }}/kratos-preprod/.env \
-              ghcr.io/${{ github.repository }}:develop
+              ghcr.io/${REPO_LOWERCASE}:develop
 
       # Update deployment status
       - name: Update deployment status
