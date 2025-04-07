@@ -8,10 +8,12 @@ on:
 permissions: 
   contents: write
   discussions: write
+  packages: write
 
 jobs:
-  build:
+  build-and-release:
     runs-on: ubuntu-latest
+    environment: Production
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -38,16 +40,47 @@ jobs:
             DATABASE_URL=postgresql://postgres:postgres@localhost:5432/kratos
             # Auth
             AUTH_SECRET=your-auth-secret
+            BETTER_AUTH_SECRET=your-better-auth-secret
+            BETTER_AUTH_URL=https://your-site-url.com
             # Stripe
             STRIPE_SECRET_KEY=your-stripe-secret-key
             STRIPE_WEBHOOK_SECRET=your-stripe-webhook-secret
             # Pterodactyl
             PTERODACTYL_URL=https://panel.example.com
+            NUXT_PUBLIC_PTERODACTYL_URL=https://panel.example.com
             PTERODACTYL_API_KEY=your-pterodactyl-api-key
+            NUXT_PTERODACTYL_API_KEY=your-pterodactyl-api-key
             PTERODACTYL_CLIENT_API_KEY=your-pterodactyl-client-api-key
+            NUXT_PUBLIC_PTERODACTYL_CLIENT_API_KEY=your-pterodactyl-client-api-key
             # Discord Webhook (optional)
-            DISCORD_WEBHOOK_URL=your-discord-webhook-url" > .env.example
+            DISCORD_WEBHOOK_URL=your-discord-webhook-url
+            # GitHub Auth (optional)
+            GH_ID=your-github-oauth-app-id
+            GH_SECRET=your-github-oauth-app-secret" > .env.example
           fi
+      
+      # Set up Docker Buildx for multi-platform builds
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Login to GitHub Container Registry
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Extract metadata for Docker image
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ !contains(github.ref, 'alpha') && !contains(github.ref, 'beta') && !contains(github.ref, 'rc') }}
 
       - name: Create deployment package
         run: |
@@ -76,7 +109,7 @@ jobs:
           
           chmod +x release/deploy.sh
           
-          # Create docker-compose.yml
+          # Create docker-compose.yml without Postgres
           cat > release/docker-compose.yml << 'EOF'
           version: '3'
           services:
@@ -86,18 +119,20 @@ jobs:
                 - "3000:3000"
               env_file:
                 - .env
-              depends_on:
-                - postgres
-            postgres:
-              image: postgres:14
+              restart: unless-stopped
+              # For additional environment variables
               environment:
-                POSTGRES_PASSWORD: postgres
-                POSTGRES_USER: postgres
-                POSTGRES_DB: kratos
-              volumes:
-                - postgres_data:/var/lib/postgresql/data
-          volumes:
-            postgres_data:
+                NODE_ENV: production
+              # For optional healthcheck
+              healthcheck:
+                test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+                interval: 30s
+                timeout: 10s
+                retries: 3
+                start_period: 40s
+              
+          # Note: This configuration assumes you have an external PostgreSQL database
+          # Make sure to set the proper DATABASE_URL in your .env file
           EOF
           
           # Create improved Dockerfile with build dependencies
@@ -110,7 +145,8 @@ jobs:
               make \
               g++ \
               gcc \
-              && ln -s /usr/bin/python3 /usr/bin/python
+              && ln -s /usr/bin/python3 /usr/bin/python \
+              && rm -rf /var/lib/apt/lists/*
 
           WORKDIR /app
           COPY . .
@@ -138,70 +174,11 @@ jobs:
           COPY --from=builder /app/prisma /app/prisma
 
           EXPOSE 3000
+          
+          # Use environment variables to configure application
+          ENV NODE_ENV=production
+
           CMD ["bun", "start"]
-          EOF
-          
-          # Create standalone node installation instructions
-          cat > release/INSTALL.md << 'EOF'
-          # Kratos Panel Installation Guide
-          
-          ## Prerequisites
-          - Bun runtime or Node.js 18 or higher
-          - PostgreSQL database
-          - Pterodactyl panel with API access
-          - Stripe account (for payments)
-          
-          ## Standard Installation (with Bun)
-          
-          1. Extract the release package
-          2. Copy `.env.example` to `.env` and fill in your configuration details
-          3. Install required build dependencies (if using native modules):
-             ```
-             # For Debian/Ubuntu
-             sudo apt-get install -y python3 make g++ gcc
-             
-             # For CentOS/RHEL
-             sudo yum install -y python3 make gcc-c++ gcc
-             ```
-          4. Run the deployment script:
-             ```
-             ./deploy.sh
-             ```
-          
-          ## Docker Installation (Recommended)
-          
-          1. Extract the release package
-          2. Copy `.env.example` to `.env` and fill in your configuration details
-          3. Start the containers:
-             ```
-             docker-compose up -d
-             ```
-          
-          ## Manual Installation
-          
-          1. Extract the release package
-          2. Copy `.env.example` to `.env` and fill in your configuration details
-          3. Install dependencies:
-             ```
-             bun install --production
-             ```
-          4. Run database migrations:
-             ```
-             bunx prisma migrate deploy
-             ```
-          5. Start the application:
-             ```
-             bun start
-             ```
-          
-          ## Post-Installation
-          
-          1. Access your panel at http://your-server:3000
-          2. Set up an admin account
-          3. Configure Pterodactyl connection
-          4. Set up Stripe webhook endpoints
-          
-          For more detailed instructions, refer to the project documentation.
           EOF
           
           # Package everything
@@ -209,11 +186,33 @@ jobs:
           zip -r ../kratos-panel-${GITHUB_REF#refs/tags/}.zip .
           cd ..
 
-      - name: Build Docker image
+      # Build and push Docker image to GHCR
+      - name: Build and push Docker image to GHCR
+        uses: docker/build-push-action@v6
+        with:
+          context: ./release
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          file: ./release/Dockerfile
+      
+      # Also build the image for release package
+      - name: Build Docker image for release
         run: |
           cd release
           docker build -t kratoshost/kratos-panel:${GITHUB_REF#refs/tags/} .
           docker save kratoshost/kratos-panel:${GITHUB_REF#refs/tags/} | gzip > ../kratos-panel-docker-${GITHUB_REF#refs/tags/}.tar.gz
+
+      # Create GitHub deployment
+      - name: Create GitHub deployment
+        id: deployment
+        uses: chrnorm/deployment-action@v2
+        with:
+          token: ${{ github.token }}
+          environment: production
+          ref: ${{ github.ref }}
 
       - name: Create GitHub Release
         id: create_release
@@ -229,7 +228,7 @@ jobs:
           body: |
             # Kratos Panel ${{ github.ref_name }}
             
-            ## Installation
+            ## Installation Options
             
             ### Option 1: Standard Installation with Bun
             
@@ -248,7 +247,14 @@ jobs:
             2. Configure your `.env` file
             3. Run `docker-compose up -d`
             
-            ### Option 3: Docker Image
+            ### Option 3: Docker Image from GitHub Container Registry
+            
+            ```bash
+            docker pull ghcr.io/${{ github.repository_owner }}/kratos-panel:${{ github.ref_name }}
+            docker run -p 3000:3000 --env-file .env ghcr.io/${{ github.repository_owner }}/kratos-panel:${{ github.ref_name }}
+            ```
+            
+            ### Option 4: Use Release Docker Image
             
             1. Download `kratos-panel-docker-${{ github.ref_name }}.tar.gz`
             2. Load the image: `docker load < kratos-panel-docker-${{ github.ref_name }}.tar.gz`
@@ -259,3 +265,64 @@ jobs:
             ## Changes in this Release
             
             <!-- Release notes are automatically generated -->
+
+      # Add a deployment script section after the GitHub Release step
+      - name: Deploy to production server
+        if: ${{ !contains(github.ref, 'alpha') && !contains(github.ref, 'beta') && !contains(github.ref, 'rc') }}
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Create environment file directory if it doesn't exist
+            mkdir -p /home/${{ secrets.SERVER_USERNAME }}/kratos-prod
+            
+            # Create or update environment file with production secrets
+            cat > /home/${{ secrets.SERVER_USERNAME }}/kratos-prod/.env << 'EOF'
+            # Production Environment Variables
+            FRONTEND_URL=${{ secrets.URL }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            BETTER_AUTH_SECRET=${{ secrets.AUTH_SECRET }}
+            BETTER_AUTH_URL=${{ secrets.URL }}
+            STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
+            STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}
+            NUXT_PUBLIC_PTERODACTYL_URL=${{ secrets.PTERODACTYL_URL }}
+            NUXT_PTERODACTYL_API_KEY=${{ secrets.PTERODACTYL_API_KEY }}
+            NUXT_PUBLIC_PTERODACTYL_CLIENT_API_KEY=${{ secrets.PTERODACTYL_CLIENT_API_KEY }}
+            GH_ID=${{ secrets.GH_ID }}
+            GH_SECRET=${{ secrets.GH_SECRET }}
+            NODE_ENV=production
+            EOF
+
+            # Convert repository name to lowercase for Docker
+            REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+            
+            # Login to GitHub Container Registry
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+
+            # Get the version without the 'v' prefix
+            VERSION="${{ github.ref_name }}"
+            VERSION=${VERSION#v}
+            
+            # Pull the latest image
+            docker pull ghcr.io/${REPO_LOWERCASE}:${{ github.ref_name }}
+            
+            # Stop and remove any existing container
+            docker stop kratos-prod || true
+            docker rm kratos-prod || true
+            
+            # Start a new container with the production environment
+            docker run -d --name kratos-prod \
+              -p 1443:3000 \
+              --restart unless-stopped \
+              --env-file /home/${{ secrets.SERVER_USERNAME }}/kratos-prod/.env \
+              ghcr.io/${REPO_LOWERCASE}:${{ github.ref_name }}
+
+      # Update deployment status
+      - name: Update deployment status
+        uses: chrnorm/deployment-status@v2
+        with:
+          token: ${{ github.token }}
+          state: success
+          deployment-id: ${{ steps.deployment.outputs.deployment_id }}
