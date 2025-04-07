@@ -30,6 +30,9 @@ jobs:
       - name: Generate Prisma client
         run: bunx prisma generate
 
+      - name: Build application
+        run: bun run build
+
       # Create preproduction environment file
       - name: Create .env.preprod
         run: |
@@ -76,31 +79,11 @@ jobs:
             type=sha,format=short
             type=raw,value=preproduction
 
-      # Create Dockerfile for preproduction with Node.js for build and Bun for runtime
+      # Create improved Dockerfile for preproduction (similar to release.yml)
       - name: Create Preproduction Dockerfile
         run: |
           mkdir -p .github/docker
           cat > .github/docker/Dockerfile.preprod << 'EOF'
-          # Build stage with Node.js
-          FROM oven/bun:latest AS builder
-
-          # Install necessary build dependencies
-          RUN apt-get update && apt-get install -y \
-              python3 \
-              make \
-              g++ \
-              gcc \
-              && ln -s /usr/bin/python3 /usr/bin/python
-
-          WORKDIR /app
-          COPY . .
-
-          # Install dependencies with Node.js (more compatible)
-          RUN bun install
-          RUN bunx prisma generate
-          RUN bun run build
-
-          # Runtime stage with Bun
           FROM oven/bun:latest
 
           # Install runtime dependencies only
@@ -110,15 +93,12 @@ jobs:
 
           WORKDIR /app
           
-          # Copy only the build artifacts and necessary files
-          COPY --from=builder /app/.output /app/.output
-          COPY --from=builder /app/node_modules /app/node_modules
-          COPY --from=builder /app/package.json /app/
-          COPY --from=builder /app/prisma /app/prisma
-          COPY --from=builder /app/.env.preprod /app/
-
-          # Verify files are copied correctly
-          RUN ls -la /app/.output || echo "Output directory not found!"
+          # Copy pre-built application files (built in the GitHub Action)
+          COPY .output /app/.output
+          COPY node_modules /app/node_modules
+          COPY package.json /app/
+          COPY prisma /app/prisma
+          COPY .env.preprod /app/.env
 
           EXPOSE 3000
           
@@ -151,7 +131,7 @@ jobs:
           environment: preproduction
           ref: ${{ github.ref }}
 
-      # Alternative approach: Deploy to server via SSH
+      # Deploy to server via SSH
       - name: Deploy to server via SSH
         uses: appleboy/ssh-action@master
         with:
