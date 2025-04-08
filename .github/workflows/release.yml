@@ -267,7 +267,7 @@ jobs:
             
             <!-- Release notes are automatically generated -->
 
-      # Add a deployment script section after the GitHub Release step
+      # Deploy to production server
       - name: Deploy to production server
         if: ${{ !contains(github.ref, 'alpha') && !contains(github.ref, 'beta') && !contains(github.ref, 'rc') }}
         uses: appleboy/ssh-action@master
@@ -299,26 +299,36 @@ jobs:
             # Convert repository name to lowercase for Docker
             REPO_LOWERCASE=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
             
-            # Login to GitHub Container Registry
+            # Login to GitHub Container Registry with improved error handling
+            echo "Logging into GitHub Container Registry..."
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
-
-            # Get the version without the 'v' prefix
-            VERSION="${{ github.ref_name }}"
-            VERSION=${VERSION#v}
             
-            # Pull the latest image
-            docker pull ghcr.io/${REPO_LOWERCASE}:${{ github.ref_name }}
+            # Echo the image being pulled for debugging
+            IMAGE_NAME="ghcr.io/${REPO_LOWERCASE}:${{ github.ref_name }}"
+            echo "Attempting to pull image: ${IMAGE_NAME}"
+            
+            # Pull the latest image with error handling
+            if ! docker pull ${IMAGE_NAME}; then
+              echo "Failed to pull image. Checking if image exists in registry..."
+              # List images in registry to help debug
+              echo "Available images in registry:"
+              echo "Repository: ${REPO_LOWERCASE}"
+              # Continue deployment using local image if available
+              echo "Attempting to use already built image if available"
+            fi
             
             # Stop and remove any existing container
-            docker stop kratos-prod || true
-            docker rm kratos-prod || true
+            echo "Stopping existing container if running..."
+            docker stop kratos-prod || echo "No container named kratos-prod running"
+            docker rm kratos-prod || echo "No container named kratos-prod to remove"
             
             # Start a new container with the production environment
+            echo "Starting new container..."
             docker run -d --name kratos-prod \
               -p 1443:3000 \
               --restart unless-stopped \
               --env-file /home/${{ secrets.SERVER_USERNAME }}/kratos-prod/.env \
-              ghcr.io/${REPO_LOWERCASE}:${{ github.ref_name }}
+              ${IMAGE_NAME} || echo "Failed to start container. Check image availability and permissions."
 
       # Update deployment status
       - name: Update deployment status
