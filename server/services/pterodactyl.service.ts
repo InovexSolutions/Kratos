@@ -8,7 +8,7 @@ export class PterodactylService {
   private readonly config = {
     host: useRuntimeConfig().public.pterodactylUrl,
     apiKey: useRuntimeConfig().pterodactylApiKey,
-    clientApiKey: useRuntimeConfig().pterodactylClientApiKey // Add this line
+    clientApiKey: useRuntimeConfig().pterodactylClientApiKey
   }
   private headers = {
     'Accept': 'application/json',
