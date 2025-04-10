@@ -25,10 +25,10 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     pterodactylApiKey: process.env.NUXT_PTERODACTYL_API_KEY || '',
-    pterodactylClientApiKey: process.env.NUXT_PUBLIC_PTERODACTYL_CLIENT_API_KEY || '',
+    pterodactylClientApiKey: process.env.NUXT_PTERODACTYL_CLIENT_API_KEY || '',
     public: {
       pterodactylUrl: process.env.NUXT_PUBLIC_PTERODACTYL_URL || '',
-      stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY || ''
+      stripePublishableKey: process.env.NUXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
     }
   },
   prisma: {

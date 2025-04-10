@@ -44,6 +44,7 @@ jobs:
             BETTER_AUTH_SECRET=your-better-auth-secret
             BETTER_AUTH_URL=https://your-site-url.com
             # Stripe
+            NUXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key
             STRIPE_SECRET_KEY=your-stripe-secret-key
             STRIPE_WEBHOOK_SECRET=your-stripe-webhook-secret
             # Pterodactyl
@@ -52,7 +53,7 @@ jobs:
             PTERODACTYL_API_KEY=your-pterodactyl-api-key
             NUXT_PTERODACTYL_API_KEY=your-pterodactyl-api-key
             PTERODACTYL_CLIENT_API_KEY=your-pterodactyl-client-api-key
-            NUXT_PUBLIC_PTERODACTYL_CLIENT_API_KEY=your-pterodactyl-client-api-key
+            NUXT_PTERODACTYL_CLIENT_API_KEY=your-pterodactyl-client-api-key
             # Discord Webhook (optional)
             DISCORD_WEBHOOK_URL=your-discord-webhook-url
             # GitHub Auth (optional)
@@ -287,11 +288,12 @@ jobs:
             DATABASE_URL=${{ secrets.DATABASE_URL }}
             BETTER_AUTH_SECRET=${{ secrets.AUTH_SECRET }}
             BETTER_AUTH_URL=${{ secrets.URL }}
+            NUXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.STRIPE_PUBLISHABLE_KEY }}
             STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}
             STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}
             NUXT_PUBLIC_PTERODACTYL_URL=${{ secrets.PTERODACTYL_URL }}
             NUXT_PTERODACTYL_API_KEY=${{ secrets.PTERODACTYL_API_KEY }}
-            NUXT_PUBLIC_PTERODACTYL_CLIENT_API_KEY=${{ secrets.PTERODACTYL_CLIENT_API_KEY }}
+            NUXT_PTERODACTYL_CLIENT_API_KEY=${{ secrets.PTERODACTYL_CLIENT_API_KEY }}
             GH_ID=${{ secrets.GH_ID }}
             GH_SECRET=${{ secrets.GH_SECRET }}
             NODE_ENV=production
