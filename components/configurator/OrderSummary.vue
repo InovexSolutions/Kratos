@@ -8,18 +8,41 @@
         <span>${{ pricingData.basePrice }}/mo</span>
       </div>
       
+      <!-- Show included resources (no extra cost) -->
+      <div class="bg-gray-700/30 p-3 rounded-lg mb-2">
+        <div class="text-sm text-gray-300 mb-2">Included in base price:</div>
+        
+        <div v-if="baseRam > 0" class="flex justify-between text-sm text-gray-400">
+          <span>RAM:</span>
+          <span>{{ baseRam }}GB</span>
+        </div>
+        
+        <div v-if="baseCpu > 0" class="flex justify-between text-sm text-gray-400">
+          <span>CPU:</span>
+          <span>{{ baseCpu }} Cores</span>
+        </div>
+        
+        <div v-if="baseStorage > 0" class="flex justify-between text-sm text-gray-400">
+          <span>Storage:</span>
+          <span>{{ baseStorage }}GB</span>
+        </div>
+      </div>
+      
+      <!-- Only show RAM pricing if it exceeds the included amount -->
       <div v-if="showRamExtra" class="flex justify-between">
-        <span class="text-gray-400">Extra RAM ({{ config.ram }}GB):</span>
+        <span class="text-gray-400">Extra RAM ({{ config.ram - baseRam }}GB):</span>
         <span>+${{ ramPrice }}/mo</span>
       </div>
       
+      <!-- Only show CPU pricing if it exceeds the included amount -->
       <div v-if="showCpuExtra" class="flex justify-between">
-        <span class="text-gray-400">Extra CPU ({{ config.cpu }} Cores):</span>
+        <span class="text-gray-400">Extra CPU ({{ config.cpu - baseCpu }} Cores):</span>
         <span>+${{ cpuPrice }}/mo</span>
       </div>
       
+      <!-- Only show Storage pricing if it exceeds the included amount -->
       <div v-if="showStorageExtra" class="flex justify-between">
-        <span class="text-gray-400">Extra Storage ({{ config.storage }}GB):</span>
+        <span class="text-gray-400">Extra Storage ({{ config.storage - baseStorage }}GB):</span>
         <span>+${{ storagePrice }}/mo</span>
       </div>
       

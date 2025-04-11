@@ -148,13 +148,15 @@ async function seed() {
                             "type": "per_unit",
                             "unit": "gb",
                             "field": "ram",
-                            "price": 2
+                            "price": 2,
+                            "included": 2
                         },
                         {
                             "type": "per_unit",
                             "unit": "cores",
                             "field": "cpu",
-                            "price": 2
+                            "price": 2,
+                            "included": 1
                         }
                     ]
                 }

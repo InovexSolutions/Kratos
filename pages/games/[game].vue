@@ -59,13 +59,10 @@
             <div v-for="field in configFields" :key="field.key" class="space-y-3">
               <div class="flex justify-between">
                 <h3 class="text-lg font-medium">{{ field.label }}</h3>
-                <span v-if="getModifierPrice(field.key)" class="text-blue-400">
-                  +${{ getModifierPrice(field.key) }}/mo
-                </span>
               </div>
               
               <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div v-for="option in field.options" :key="option.value" class="col-span-1">
+                <template v-for="option in field.options" :key="option.value">
                   <label class="flex flex-col cursor-pointer">
                     <input
                       v-model="serverConfig[field.key]"
@@ -76,16 +73,26 @@
                     >
                     <div
                       :class="[
-                        'p-4 rounded-lg border transition-all text-center',
+                        'p-4 rounded-lg border transition-all',
                         serverConfig[field.key] === option.value
                           ? 'border-blue-500 bg-blue-500/10'
-                          : 'border-gray-700 hover:border-blue-400'
+                          : 'border-gray-700 hover:border-blue-400',
+                        isIncludedResource(field.key, option.value) ? 'border-green-500/50' : ''
                       ]"
                     >
                       <div class="text-lg font-semibold">{{ option.label }}</div>
+                      <div class="text-sm">
+                        <span v-if="isIncludedResource(field.key, option.value)" class="text-green-400">
+                          Included
+                        </span>
+                        <span v-else-if="getModifierPrice(field.key, option.value)" class="text-blue-400">
+                          +${{ getModifierPrice(field.key, option.value) }}/mo
+                        </span>
+                        <span v-else class="text-gray-400">&nbsp;</span>
+                      </div>
                     </div>
                   </label>
-                </div>
+                </template>
               </div>
             </div>
 
@@ -303,7 +310,7 @@ const configFields = computed(() => {
       }));
     } 
     else if (modifier.field === 'cpu') {
-      options = [2, 4, 8].map(value => ({ 
+      options = [1, 2, 4, 8].map(value => ({ 
         value, 
         label: `${value} Cores` 
       }));
@@ -346,7 +353,7 @@ const modifierPrices = computed(() => {
     const value = serverConfig.value[modifier.field];
     if (value !== undefined) {
       if (modifier.type === 'per_unit') {
-        prices[modifier.field] = value * modifier.price;
+        prices[modifier.field] = getModifierPrice(modifier.field, value);
       } else if (modifier.type === 'fixed') {
         prices[modifier.field] = modifier.price;
       }
@@ -367,9 +374,33 @@ const totalPrice = computed(() => {
   return total;
 });
 
-// Get the price of a specific modifier
-const getModifierPrice = (field) => {
-  return modifierPrices.value[field] || 0;
+// Get modifier price, accounting for included resources
+const getModifierPrice = (field, value) => {
+  if (!pricingPlan.value?.pricingModel?.modifiers) return 0;
+  
+  const modifier = pricingPlan.value.pricingModel.modifiers.find(m => m.field === field);
+  if (!modifier) return 0;
+  
+  if (modifier.type === 'per_unit') {
+    // Calculate price only for units above the included amount
+    const included = modifier.included || 0;
+    const chargeable = Math.max(0, value - included);
+    return chargeable * modifier.price;
+  } else if (modifier.type === 'fixed') {
+    return value ? modifier.price : 0;
+  }
+  
+  return 0;
+};
+
+// Helper to check if a specific resource option is included in the base price
+const isIncludedResource = (field, value) => {
+  if (!pricingPlan.value?.pricingModel?.modifiers) return false;
+  
+  const modifier = pricingPlan.value.pricingModel.modifiers.find(m => m.field === field);
+  if (!modifier || !modifier.included) return false;
+  
+  return value <= modifier.included;
 };
 
 // Get human-readable field labels
