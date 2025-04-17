@@ -95,8 +95,9 @@
 
       <!-- Create Server Button -->
       <div class="mt-12 text-center animate-fade-in-up delay-300">
-        <button @click="showCreateServerModal = true"
-          class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-4 rounded-xl text-lg font-semibold transform hover:scale-105 transition-all duration-300 shadow-lg shadow-blue-500/20">
+        <button
+          class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-4 rounded-xl text-lg font-semibold transform hover:scale-105 transition-all duration-300 shadow-lg shadow-blue-500/20"
+          @click="showCreateServerModal = true">
           <span class="mr-2">🎮</span> Create New Server
         </button>
       </div>
